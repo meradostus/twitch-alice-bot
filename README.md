@@ -10,9 +10,18 @@
 Стрим начался → 🔊 Алиса (TTS)
                 └─ если Алиса недоступна → 📱 Telegram
 
-Ошибка (Twitch/Алиса) → 📱 Telegram
-                         └─ если Telegram недоступен → 📧 Email
+Ошибка → 📱 Telegram
+          └─ если Telegram недоступен → 📧 Email
 ```
+
+## Режимы мониторинга
+
+| Режим | Как работает | Требования |
+|---|---|---|
+| `twitch` | Опрашивает Twitch API каждые N секунд | Приложение на dev.twitch.tv |
+| `telegram` | Слушает уведомления от @twiMonBot | Telegram-аккаунт + @twiMonBot |
+
+Режим выбирается при установке. Сменить после установки: `bash switch_mode.sh`
 
 ## Быстрый старт
 
@@ -22,8 +31,7 @@
 bash <(curl -fsSL https://raw.githubusercontent.com/meradostus/twitch-alice-bot/main/install.sh)
 ```
 
-Скрипт сам установит зависимости, проведёт через настройку всех токенов
-с пошаговыми инструкциями и зарегистрирует systemd-сервис.
+Скрипт установит зависимости, проведёт через настройку всех токенов и зарегистрирует systemd-сервис.
 
 ## Обновление / переустановка
 
@@ -48,9 +56,18 @@ bash install.sh
 | `/subscribe <логин>` | Начать следить за каналом |
 | `/unsubscribe <логин>` | Остановить слежение |
 | `/list` | Список каналов и текущий статус |
-| `/status` | Состояние Twitch API и Алисы |
+| `/status` | Состояние сервисов |
+| `/mode` | Текущий режим мониторинга |
 
 **Логин** — часть URL канала на Twitch: `twitch.tv/ninja` → логин `ninja`.
+
+## Смена режима мониторинга
+
+```bash
+bash switch_mode.sh
+```
+
+Скрипт покажет текущий режим, запросит только недостающие данные и перезапустит сервис.
 
 ## Управление сервисом
 
@@ -62,30 +79,26 @@ sudo journalctl -u twitch-alice-bot -f      # логи
 
 После изменения `.env` — перезапустить сервис.
 
-## Как работает мониторинг
-
-Бот каждые `POLL_INTERVAL` секунд (по умолчанию 60) опрашивает Twitch API.
-Когда канал переходит из offline в online — отправляет голосовое уведомление Алисе.
-Текст уведомления: **«[Ник] начал стрим. Играет в [игра]»**.
-
 ## Структура проекта
 
 ```
 twitch-alice-bot/
 ├── bot/
-│   ├── alice.py            # Клиент Яндекс Quasar API (TTS)
-│   ├── alice_discovery.py  # Утилита поиска device_id Станции
-│   ├── config.py           # Конфигурация из .env
-│   ├── database.py         # SQLite (aiosqlite)
-│   ├── handlers.py         # Telegram-команды
-│   ├── main.py             # Точка входа
-│   ├── monitor.py          # Цикл опроса Twitch
-│   ├── notifier.py         # Цепочка уведомлений: Telegram → Email
-│   └── twitch.py           # Twitch Helix API клиент
-├── data/                   # SQLite база (bot.db)
-├── .env                    # Конфигурация (не коммитить!)
-├── .env.example            # Шаблон конфигурации
-├── install.sh              # Установщик
+│   ├── alice.py              # Клиент Яндекс Quasar API (TTS)
+│   ├── alice_discovery.py    # Утилита поиска device_id Станции
+│   ├── config.py             # Конфигурация из .env
+│   ├── database.py           # SQLite (aiosqlite)
+│   ├── handlers.py           # Telegram-команды
+│   ├── main.py               # Точка входа
+│   ├── monitor.py            # Мониторинг через Twitch API
+│   ├── telegram_monitor.py   # Мониторинг через @twiMonBot
+│   ├── notifier.py           # Цепочка уведомлений: Telegram → Email
+│   └── twitch.py             # Twitch Helix API клиент
+├── data/                     # SQLite база (bot.db)
+├── .env                      # Конфигурация (не коммитить!)
+├── .env.example              # Шаблон конфигурации
+├── install.sh                # Установщик
+├── switch_mode.sh            # Смена режима мониторинга
 ├── requirements.txt
 └── twitch-alice-bot.service
 ```
