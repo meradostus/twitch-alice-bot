@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from aiogram import Router
 from aiogram.filters import Command
@@ -26,14 +27,15 @@ async def cmd_start(message: Message):
         "/subscribe &lt;логин&gt; — подписаться на канал\n"
         "/unsubscribe &lt;логин&gt; — отписаться\n"
         "/list — список отслеживаемых каналов\n"
-        "/status — состояние сервисов"
+        "/status — состояние сервисов\n"
+        "/mode — текущий режим мониторинга"
         + _LOGIN_HINT,
         parse_mode="HTML",
     )
 
 
 @router.message(Command("subscribe"))
-async def cmd_subscribe(message: Message, db: Database, twitch: TwitchClient):
+async def cmd_subscribe(message: Message, db: Database, twitch: Optional[TwitchClient] = None):
     args = (message.text or "").split(maxsplit=1)
     if len(args) < 2 or not args[1].strip():
         await message.answer(
@@ -87,14 +89,42 @@ async def cmd_list(message: Message, db: Database):
 
 
 @router.message(Command("status"))
-async def cmd_status(message: Message, db: Database, twitch: TwitchClient, alice: AliceClient):
-    twitch_ok = await twitch.check_connection()
+async def cmd_status(
+    message: Message,
+    db: Database,
+    alice: AliceClient,
+    monitor_mode: str = "twitch",
+    twitch: Optional[TwitchClient] = None,
+):
     alice_ok = await alice.check_connection()
     channels = await db.get_channels()
 
-    lines = [
-        f"Twitch API: {'✅' if twitch_ok else '❌'}",
+    lines = []
+    if monitor_mode == "twitch" and twitch is not None:
+        twitch_ok = await twitch.check_connection()
+        lines.append(f"Twitch API: {'✅' if twitch_ok else '❌'}")
+    else:
+        lines.append("Источник:   ✅ @twiMonBot")
+
+    lines += [
         f"Алиса:      {'✅' if alice_ok else '❌'}",
         f"Каналов:    {len(channels)}",
+        f"Режим:      {monitor_mode}",
     ]
     await message.answer("\n".join(lines))
+
+
+@router.message(Command("mode"))
+async def cmd_mode(message: Message, monitor_mode: str = "twitch"):
+    if monitor_mode == "telegram":
+        desc = "Telegram (@twiMonBot) — уведомления от @twiMonBot"
+    else:
+        desc = "Twitch API — прямой опрос Twitch каждые N секунд"
+
+    await message.answer(
+        f"📡 <b>Режим мониторинга:</b> <code>{monitor_mode}</code>\n"
+        f"{desc}\n\n"
+        f"Сменить режим:\n"
+        f"<code>bash switch_mode.sh</code>",
+        parse_mode="HTML",
+    )

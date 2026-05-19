@@ -35,6 +35,7 @@ async def main():
     dp = Dispatcher()
     dp["db"] = db
     dp["alice"] = alice
+    dp["monitor_mode"] = cfg.monitor_mode
     dp.include_router(router)
 
     stop_event = asyncio.Event()
