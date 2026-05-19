@@ -12,14 +12,22 @@
                          └─ если Telegram недоступен → 📧 Email
 ```
 
-## Установка
+## Быстрый старт
+
+Одна команда на чистом VPS (Ubuntu/Debian):
 
 ```bash
-bash install.sh
+bash <(curl -fsSL https://gitlab.com/dostus2/twitch-alice-bot/-/raw/main/install.sh)
 ```
 
 Скрипт сам установит зависимости, проведёт через настройку всех токенов
 с пошаговыми инструкциями и зарегистрирует systemd-сервис.
+
+## Обновление / переустановка
+
+```bash
+cd /path/to/twitch-alice-bot && git pull && bash install.sh
+```
 
 ## Команды бота в Telegram
 
