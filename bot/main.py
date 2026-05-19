@@ -69,6 +69,8 @@ async def main():
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, lambda s=sig: handle_signal(s))
 
+    mode_label = "Telegram (@twiMonBot)" if cfg.monitor_mode == "telegram" else "Twitch API"
+    await notifier.system(f"Бот запущен · {mode_label}")
     logger.info("Бот запущен")
 
     try:
@@ -83,9 +85,10 @@ async def main():
         if cfg.monitor_mode == "twitch":
             await twitch.close()
         await alice.close()
+        await notifier.system("Бот остановлен")
+        logger.info("Бот остановлен")
         await bot.session.close()
         await db.close()
-        logger.info("Бот остановлен")
 
 
 def run():

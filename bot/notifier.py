@@ -38,6 +38,10 @@ class Notifier:
         """Telegram-фолбэк когда Алиса недоступна."""
         await self._telegram(f"🔴 {text}")
 
+    async def system(self, text: str):
+        """Системное уведомление о состоянии бота."""
+        await self._telegram(f"🤖 {text}")
+
     # --- internals ---
 
     async def _telegram(self, text: str) -> bool:
