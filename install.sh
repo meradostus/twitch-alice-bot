@@ -274,7 +274,7 @@ DOC
 echo
 
 ask_required "Twitch Client ID"     twitch_client_id
-ask_required "Twitch Client Secret" twitch_client_secret secret
+ask_required "Twitch Client Secret" twitch_client_secret
 
 fi  # конец блока twitch
 
@@ -314,7 +314,7 @@ else
 DOC
     echo
     ask_required "Telegram API ID (число)"    tg_api_id
-    ask_required "Telegram API Hash (строка)" tg_api_hash secret
+    ask_required "Telegram API Hash (строка)" tg_api_hash
 fi
 
 cat << 'DOC'
@@ -491,7 +491,7 @@ cat << 'DOC'
 DOC
 echo
 
-ask_required "Yandex OAuth Token" yandex_token secret
+ask_required "Yandex OAuth Token" yandex_token
 
 # ── Авто-определение устройства ──────────────────────────────────────────────
 echo

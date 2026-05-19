@@ -79,7 +79,7 @@ if [[ "$new_mode" == "twitch" ]]; then
         info "Создать приложение: https://dev.twitch.tv/console/apps"
         echo
         [[ -z "$client_id" ]]     && ask_required "Twitch Client ID"     client_id
-        [[ -z "$client_secret" ]] && ask_required "Twitch Client Secret" client_secret secret
+        [[ -z "$client_secret" ]] && ask_required "Twitch Client Secret" client_secret
         set_env TWITCH_CLIENT_ID     "$client_id"
         set_env TWITCH_CLIENT_SECRET "$client_secret"
         ok "Twitch credentials сохранены"
@@ -109,7 +109,7 @@ if [[ "$new_mode" == "telegram" ]]; then
             ok "Используем встроенные credentials"
         else
             ask_required "Telegram API ID (число)"    api_id
-            ask_required "Telegram API Hash"           api_hash secret
+            ask_required "Telegram API Hash"           api_hash
         fi
         set_env TELEGRAM_API_ID   "$api_id"
         set_env TELEGRAM_API_HASH "$api_hash"
