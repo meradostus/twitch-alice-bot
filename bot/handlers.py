@@ -72,19 +72,24 @@ def _can_switch_to(target: str) -> tuple[bool, str]:
 _UPDATE_SCRIPT = Path(__file__).parent.parent / "update.sh"
 
 
-@router.message(Command("start"))
+_HELP_TEXT = (
+    "👾 <b>Twitch-Alice Bot</b>\n\n"
+    "<b>Подписки:</b>\n"
+    "/subscribe &lt;логин&gt; — подписаться на канал\n"
+    "/unsubscribe &lt;логин&gt; — отписаться от канала\n"
+    "/list — список отслеживаемых каналов\n\n"
+    "<b>Информация:</b>\n"
+    "/status — состояние сервисов\n"
+    "/mode — режим мониторинга и переключение\n\n"
+    "<b>Обслуживание:</b>\n"
+    "/update — обновить бот с GitHub и перезапустить"
+    + _LOGIN_HINT
+)
+
+
+@router.message(Command("start", "help"))
 async def cmd_start(message: Message):
-    await message.answer(
-        "👾 <b>Twitch-Alice Bot</b>\n\n"
-        "/subscribe &lt;логин&gt; — подписаться на канал\n"
-        "/unsubscribe &lt;логин&gt; — отписаться\n"
-        "/list — список отслеживаемых каналов\n"
-        "/status — состояние сервисов\n"
-        "/mode — режим мониторинга\n"
-        "/update — обновить бот с GitHub"
-        + _LOGIN_HINT,
-        parse_mode="HTML",
-    )
+    await message.answer(_HELP_TEXT, parse_mode="HTML")
 
 
 @router.message(Command("subscribe"))
