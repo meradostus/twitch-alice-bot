@@ -89,24 +89,40 @@ if [[ "$new_mode" == "twitch" ]]; then
 fi
 
 # ── Telegram user-аккаунт ─────────────────────────────────────────────────────
+_DEFAULT_API_ID="2040"
+_DEFAULT_API_HASH="b18441a1ff607e10a989891a5462e627"
+
 if [[ "$new_mode" == "telegram" ]]; then
     api_id="$(get_env TELEGRAM_API_ID)"
     api_hash="$(get_env TELEGRAM_API_HASH)"
     tg_phone="$(get_env TELEGRAM_PHONE)"
 
-    if [[ -z "$api_id" || -z "$api_hash" || -z "$tg_phone" ]]; then
-        printf "${BOLD}  Telegram user credentials${RESET}\n"
-        info "Получить API_ID и API_HASH: https://my.telegram.org → API development tools"
+    if [[ -z "$api_id" || -z "$api_hash" ]]; then
+        printf "${BOLD}  Telegram API credentials${RESET}\n"
+        info "Если my.telegram.org недоступен — используй встроенные (Telegram Desktop)"
         echo
-        [[ -z "$api_id" ]]   && ask_required "Telegram API ID (число)"        api_id
-        [[ -z "$api_hash" ]] && ask_required "Telegram API Hash"               api_hash secret
-        [[ -z "$tg_phone" ]] && ask_required "Номер телефона (+79001234567)"   tg_phone
+        printf "  Использовать встроенные API credentials (Telegram Desktop)? [Y/n] "
+        read -r _cred_choice
+        if [[ ! "$(trim "$_cred_choice")" =~ ^[nNнН]$ ]]; then
+            api_id="$_DEFAULT_API_ID"
+            api_hash="$_DEFAULT_API_HASH"
+            ok "Используем встроенные credentials"
+        else
+            ask_required "Telegram API ID (число)"    api_id
+            ask_required "Telegram API Hash"           api_hash secret
+        fi
         set_env TELEGRAM_API_ID   "$api_id"
         set_env TELEGRAM_API_HASH "$api_hash"
-        set_env TELEGRAM_PHONE    "$tg_phone"
-        ok "Telegram credentials сохранены"
     else
-        ok "Telegram credentials уже есть в .env"
+        ok "Telegram API credentials уже есть в .env"
+    fi
+
+    if [[ -z "$tg_phone" ]]; then
+        echo
+        ask_required "Номер телефона (+79001234567)" tg_phone
+        set_env TELEGRAM_PHONE "$tg_phone"
+    else
+        ok "Номер телефона уже есть в .env"
     fi
 
     echo

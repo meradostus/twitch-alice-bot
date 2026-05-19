@@ -288,21 +288,34 @@ cat << 'DOC'
   Для чтения сообщений от @twiMonBot нужен доступ к Telegram-аккаунту
   пользователя (не бот-токен, а настоящий аккаунт).
 
-  КАК ПОЛУЧИТЬ API_ID и API_HASH:
-  ─────────────────────────────────────────────────────────
-  1. Открой https://my.telegram.org и войди под своим аккаунтом
-
-  2. Перейди в раздел "API development tools"
-
-  3. Заполни форму (App title и Short name — любые)
-
-  4. Скопируй App api_id (число) и App api_hash (строка)
-  ─────────────────────────────────────────────────────────
+  Для этого нужны API_ID и API_HASH. Их можно получить на my.telegram.org,
+  или использовать встроенные (Telegram Desktop) — если my.telegram.org
+  недоступен или возвращает ошибку.
 DOC
 echo
 
-ask_required "Telegram API ID (число)"   tg_api_id
-ask_required "Telegram API Hash (строка)" tg_api_hash secret
+_DEFAULT_API_ID="2040"
+_DEFAULT_API_HASH="b18441a1ff607e10a989891a5462e627"
+
+if confirm "Использовать встроенные API credentials (Telegram Desktop)?"; then
+    tg_api_id="$_DEFAULT_API_ID"
+    tg_api_hash="$_DEFAULT_API_HASH"
+    ok "Используем встроенные credentials"
+else
+    cat << 'DOC'
+
+  КАК ПОЛУЧИТЬ API_ID и API_HASH:
+  ─────────────────────────────────────────────────────────
+  1. Открой https://my.telegram.org и войди под своим аккаунтом
+  2. Перейди в раздел "API development tools"
+  3. Заполни форму (App title и Short name — любые)
+  4. Скопируй App api_id (число) и App api_hash (строка)
+  ─────────────────────────────────────────────────────────
+DOC
+    echo
+    ask_required "Telegram API ID (число)"    tg_api_id
+    ask_required "Telegram API Hash (строка)" tg_api_hash secret
+fi
 
 cat << 'DOC'
 
