@@ -132,12 +132,20 @@ if [[ "$new_mode" == "telegram" ]]; then
     mkdir -p "$SCRIPT_DIR/data"
     TMPAUTH=$(mktemp /tmp/tg_auth_XXXXXX.py)
     cat > "$TMPAUTH" << 'PYEOF'
-import sys, asyncio
+import sys, re, asyncio
 from telethon import TelegramClient
 
+def normalize_phone(p):
+    p = re.sub(r'[\s\-\(\)]+', '', p)
+    if not p.startswith('+'):
+        p = '+' + p
+    return p
+
 async def main():
+    phone = normalize_phone(sys.argv[3])
+    print(f"  Номер: {phone}")
     client = TelegramClient(sys.argv[4], int(sys.argv[1]), sys.argv[2])
-    await client.start(phone=sys.argv[3])
+    await client.start(phone=phone)
     me = await client.get_me()
     name = (me.first_name or "") + (" " + me.last_name if me.last_name else "")
     print(f"  Авторизован как: {name.strip()} (@{me.username or me.phone})")

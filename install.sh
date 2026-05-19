@@ -333,14 +333,21 @@ echo
 mkdir -p "$PROJECT_DIR/data"
 TMPAUTH=$(mktemp /tmp/tg_auth_XXXXXX.py)
 cat > "$TMPAUTH" << 'PYEOF'
-import sys, asyncio
+import sys, re, asyncio
 from telethon import TelegramClient
+
+def normalize_phone(p):
+    p = re.sub(r'[\s\-\(\)]+', '', p)
+    if not p.startswith('+'):
+        p = '+' + p
+    return p
 
 async def main():
     api_id   = int(sys.argv[1])
     api_hash = sys.argv[2]
-    phone    = sys.argv[3]
+    phone    = normalize_phone(sys.argv[3])
     session  = sys.argv[4]
+    print(f"  Номер: {phone}")
     client = TelegramClient(session, api_id, api_hash)
     await client.start(phone=phone)
     me = await client.get_me()
