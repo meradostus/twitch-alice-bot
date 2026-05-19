@@ -36,7 +36,7 @@ class Monitor:
                 await self._notifier.error(f"Внутренняя ошибка мониторинга: {exc}")
             await asyncio.sleep(self._interval)
 
-    def stop(self):
+    async def stop(self):
         self._running = False
 
     async def _tick(self):

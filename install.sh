@@ -210,6 +210,38 @@ fi
 if [[ "$SKIP_CONFIG" == false ]]; then
 
 # ═════════════════════════════════════════════════════════════════════════════
+h1 "РЕЖИМ МОНИТОРИНГА"
+cat << 'DOC'
+  Бот поддерживает два режима отслеживания Twitch-каналов:
+
+  1. Twitch API — бот сам опрашивает Twitch API каждые N секунд.
+     Требуется приложение на dev.twitch.tv/console/apps.
+
+  2. Telegram (@twiMonBot) — бот слушает уведомления от @twiMonBot.
+     Не требует доступа к Twitch API. Нужен Telegram-аккаунт (не бот),
+     подключённый к @twiMonBot.
+DOC
+echo
+
+monitor_mode_value=""
+while [[ "$monitor_mode_value" != "twitch" && "$monitor_mode_value" != "telegram" ]]; do
+    printf "${BOLD}  Выбери режим:${RESET}\n"
+    printf "    1) Twitch API\n"
+    printf "    2) Telegram (@twiMonBot)\n"
+    printf "${BOLD}  Вариант (1/2)${RESET}: "
+    read -r _mode_choice
+    case "$(trim "$_mode_choice")" in
+        1) monitor_mode_value="twitch"   ; ok "Режим: Twitch API" ;;
+        2) monitor_mode_value="telegram" ; ok "Режим: Telegram (@twiMonBot)" ;;
+        *) warn "Введи 1 или 2" ;;
+    esac
+done
+
+# ── Twitch (только для режима twitch) ────────────────────────────────────────
+twitch_client_id=""; twitch_client_secret=""
+if [[ "$monitor_mode_value" == "twitch" ]]; then
+
+# ═════════════════════════════════════════════════════════════════════════════
 h1 "TWITCH"
 cat << 'DOC'
   Twitch Client ID и Client Secret — доступ к Twitch API.
@@ -243,6 +275,81 @@ echo
 
 ask_required "Twitch Client ID"     twitch_client_id
 ask_required "Twitch Client Secret" twitch_client_secret secret
+
+fi  # конец блока twitch
+
+# ── Telegram user-аккаунт (только для режима telegram) ───────────────────────
+tg_api_id=""; tg_api_hash=""; tg_phone=""
+if [[ "$monitor_mode_value" == "telegram" ]]; then
+
+# ═════════════════════════════════════════════════════════════════════════════
+h1 "TELEGRAM USER-АККАУНТ (@twiMonBot)"
+cat << 'DOC'
+  Для чтения сообщений от @twiMonBot нужен доступ к Telegram-аккаунту
+  пользователя (не бот-токен, а настоящий аккаунт).
+
+  КАК ПОЛУЧИТЬ API_ID и API_HASH:
+  ─────────────────────────────────────────────────────────
+  1. Открой https://my.telegram.org и войди под своим аккаунтом
+
+  2. Перейди в раздел "API development tools"
+
+  3. Заполни форму (App title и Short name — любые)
+
+  4. Скопируй App api_id (число) и App api_hash (строка)
+  ─────────────────────────────────────────────────────────
+DOC
+echo
+
+ask_required "Telegram API ID (число)"   tg_api_id
+ask_required "Telegram API Hash (строка)" tg_api_hash secret
+
+cat << 'DOC'
+
+  Номер телефона — того аккаунта, которым ты подключён к @twiMonBot.
+  Формат: +79001234567 (с кодом страны, без пробелов)
+DOC
+echo
+
+ask_required "Номер телефона" tg_phone
+
+echo
+info "Авторизуюсь в Telegram. На твой телефон придёт код подтверждения..."
+echo
+
+mkdir -p "$PROJECT_DIR/data"
+TMPAUTH=$(mktemp /tmp/tg_auth_XXXXXX.py)
+cat > "$TMPAUTH" << 'PYEOF'
+import sys, asyncio
+from telethon import TelegramClient
+
+async def main():
+    api_id   = int(sys.argv[1])
+    api_hash = sys.argv[2]
+    phone    = sys.argv[3]
+    session  = sys.argv[4]
+    client = TelegramClient(session, api_id, api_hash)
+    await client.start(phone=phone)
+    me = await client.get_me()
+    name = me.first_name or ""
+    if me.last_name:
+        name += f" {me.last_name}"
+    print(f"  Авторизован как: {name} (@{me.username or me.phone})")
+    await client.disconnect()
+
+asyncio.run(main())
+PYEOF
+
+if "$VENV/bin/python3" "$TMPAUTH" \
+        "$tg_api_id" "$tg_api_hash" "$tg_phone" \
+        "$PROJECT_DIR/data/telegram_user"; then
+    ok "Telegram-сессия сохранена"
+else
+    die "Авторизация Telegram не удалась — проверь API_ID, API_HASH и номер телефона"
+fi
+rm -f "$TMPAUTH"
+
+fi  # конец блока telegram
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -511,6 +618,8 @@ fi
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+poll_interval=60
+if [[ "$monitor_mode_value" == "twitch" ]]; then
 h1 "ПАРАМЕТРЫ МОНИТОРИНГА"
 cat << 'DOC'
   Интервал опроса — как часто бот проверяет Twitch API.
@@ -525,6 +634,7 @@ if [[ ! "$poll_interval" =~ ^[0-9]+$ ]] || [[ "$poll_interval" -lt 30 ]]; then
     warn "Установлено минимальное значение: 30"
     poll_interval=30
 fi
+fi
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -533,13 +643,21 @@ fi
 h1 "ЗАПИСЬ КОНФИГУРАЦИИ"
 
 cat > "$ENV_FILE" << EOF
-# Twitch
+# Режим мониторинга
+$(write_env_var MONITOR_MODE "$monitor_mode_value")
+
+# Twitch (только для MONITOR_MODE=twitch)
 $(write_env_var TWITCH_CLIENT_ID     "$twitch_client_id")
 $(write_env_var TWITCH_CLIENT_SECRET "$twitch_client_secret")
 
-# Telegram
+# Telegram-бот
 $(write_env_var TELEGRAM_BOT_TOKEN "$tg_token")
 $(write_env_var TELEGRAM_CHAT_ID   "$tg_chat_id")
+
+# Telegram user-аккаунт (только для MONITOR_MODE=telegram)
+$(write_env_var TELEGRAM_API_ID   "$tg_api_id")
+$(write_env_var TELEGRAM_API_HASH "$tg_api_hash")
+$(write_env_var TELEGRAM_PHONE    "$tg_phone")
 
 # Яндекс Алиса
 $(write_env_var YANDEX_TOKEN     "$yandex_token")
@@ -570,10 +688,12 @@ fi  # конец блока SKIP_CONFIG
 # ─────────────────────────────────────────────────────────────────────────────
 step_hdr 5 "Тест подключений"
 
-if confirm "Проверить Twitch API, Яндекс и Telegram?"; then
+if confirm "Проверить подключения?"; then
     echo
-    "$VENV/bin/python3" << 'PYEOF'
+    "$VENV/bin/python3" << PYEOF
 import asyncio, sys
+
+MONITOR_MODE = "$monitor_mode_value"
 
 async def main():
     try:
@@ -585,15 +705,16 @@ async def main():
 
     results = {}
 
-    from bot.twitch import TwitchClient
-    t = TwitchClient(cfg.twitch_client_id, cfg.twitch_client_secret)
-    try:
-        await t.start()
-        results["Twitch API   "] = await t.check_connection()
-    except Exception:
-        results["Twitch API   "] = False
-    finally:
-        await t.close()
+    if MONITOR_MODE == "twitch":
+        from bot.twitch import TwitchClient
+        t = TwitchClient(cfg.twitch_client_id, cfg.twitch_client_secret)
+        try:
+            await t.start()
+            results["Twitch API   "] = await t.check_connection()
+        except Exception:
+            results["Twitch API   "] = False
+        finally:
+            await t.close()
 
     from bot.alice import AliceClient
     a = AliceClient(cfg.yandex_token, cfg.yandex_device_id, cfg.yandex_platform)

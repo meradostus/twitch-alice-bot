@@ -9,9 +9,7 @@ from .alice import AliceClient
 from .config import load_config
 from .database import Database
 from .handlers import router
-from .monitor import Monitor
 from .notifier import Notifier
-from .twitch import TwitchClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,9 +26,6 @@ async def main():
     db = Database(cfg.db_path)
     await db.connect()
 
-    twitch = TwitchClient(cfg.twitch_client_id, cfg.twitch_client_secret)
-    await twitch.start()
-
     alice = AliceClient(cfg.yandex_token, cfg.yandex_device_id, cfg.yandex_platform)
     await alice.start()
 
@@ -38,26 +33,34 @@ async def main():
     notifier = Notifier(bot, cfg.telegram_chat_id, cfg.email)
 
     dp = Dispatcher()
-    # aiogram 3.x DI: данные доступны как параметры хендлеров
     dp["db"] = db
-    dp["twitch"] = twitch
     dp["alice"] = alice
     dp.include_router(router)
 
-    monitor = Monitor(db, twitch, alice, notifier, cfg.poll_interval)
-
     stop_event = asyncio.Event()
+
+    if cfg.monitor_mode == "telegram":
+        from .telegram_monitor import TelegramMonitor
+        monitor = TelegramMonitor(cfg, db, alice, notifier)
+        logger.info("Режим мониторинга: Telegram (@twiMonBot)")
+    else:
+        from .twitch import TwitchClient
+        from .monitor import Monitor
+        twitch = TwitchClient(cfg.twitch_client_id, cfg.twitch_client_secret)
+        await twitch.start()
+        dp["twitch"] = twitch
+        monitor = Monitor(db, twitch, alice, notifier, cfg.poll_interval)
+        logger.info("Режим мониторинга: Twitch API (poll=%ds)", cfg.poll_interval)
 
     def handle_signal(sig: signal.Signals):
         logger.info("Сигнал %s — остановка", sig.name)
-        monitor.stop()
         stop_event.set()
 
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, lambda s=sig: handle_signal(s))
 
-    logger.info("Бот запущен (poll=%ds)", cfg.poll_interval)
+    logger.info("Бот запущен")
 
     try:
         async with asyncio.TaskGroup() as tg:
@@ -66,9 +69,10 @@ async def main():
     except* asyncio.CancelledError:
         pass
     finally:
-        monitor.stop()
+        await monitor.stop()
         await dp.storage.close()
-        await twitch.close()
+        if cfg.monitor_mode == "twitch":
+            await twitch.close()
         await alice.close()
         await bot.session.close()
         await db.close()

@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,37 +21,67 @@ class EmailConfig:
 
 @dataclass(frozen=True)
 class Config:
+    monitor_mode: str  # "twitch" | "telegram"
+    # Twitch API (только для режима twitch)
     twitch_client_id: str
     twitch_client_secret: str
+    # Telegram-бот (всегда)
     telegram_bot_token: str
     telegram_chat_id: int
+    # Telegram user-аккаунт (только для режима telegram)
+    telegram_api_id: int
+    telegram_api_hash: str
+    telegram_phone: str
+    telegram_session_path: str
+    # Яндекс Алиса
     yandex_token: str
     yandex_device_id: str
     yandex_platform: str
+    # Общие
     db_path: str
     poll_interval: int
     email: EmailConfig
 
 
 def load_config() -> Config:
+    mode = os.getenv("MONITOR_MODE", "twitch").lower()
+    if mode not in ("twitch", "telegram"):
+        raise RuntimeError(f"MONITOR_MODE должен быть 'twitch' или 'telegram', получено: '{mode}'")
+
     missing = []
-    for key in ("TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET",
-                 "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID",
-                 "YANDEX_TOKEN", "YANDEX_DEVICE_ID"):
+    always_required = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "YANDEX_TOKEN", "YANDEX_DEVICE_ID")
+    for key in always_required:
         if not os.getenv(key):
             missing.append(key)
+
+    if mode == "twitch":
+        for key in ("TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET"):
+            if not os.getenv(key):
+                missing.append(key)
+    else:
+        for key in ("TELEGRAM_API_ID", "TELEGRAM_API_HASH", "TELEGRAM_PHONE"):
+            if not os.getenv(key):
+                missing.append(key)
+
     if missing:
         raise RuntimeError(f"Отсутствуют обязательные переменные окружения: {', '.join(missing)}")
 
+    db_path = os.getenv("DB_PATH", "data/bot.db")
+
     return Config(
-        twitch_client_id=os.environ["TWITCH_CLIENT_ID"],
-        twitch_client_secret=os.environ["TWITCH_CLIENT_SECRET"],
+        monitor_mode=mode,
+        twitch_client_id=os.getenv("TWITCH_CLIENT_ID", ""),
+        twitch_client_secret=os.getenv("TWITCH_CLIENT_SECRET", ""),
         telegram_bot_token=os.environ["TELEGRAM_BOT_TOKEN"],
         telegram_chat_id=int(os.environ["TELEGRAM_CHAT_ID"]),
+        telegram_api_id=int(os.getenv("TELEGRAM_API_ID", "0")),
+        telegram_api_hash=os.getenv("TELEGRAM_API_HASH", ""),
+        telegram_phone=os.getenv("TELEGRAM_PHONE", ""),
+        telegram_session_path=os.path.join(os.path.dirname(db_path), "telegram_user"),
         yandex_token=os.environ["YANDEX_TOKEN"],
         yandex_device_id=os.environ["YANDEX_DEVICE_ID"],
         yandex_platform=os.getenv("YANDEX_PLATFORM", "yandexstation_2"),
-        db_path=os.getenv("DB_PATH", "data/bot.db"),
+        db_path=db_path,
         poll_interval=max(30, int(os.getenv("POLL_INTERVAL", "60"))),
         email=EmailConfig(
             smtp_host=os.getenv("EMAIL_SMTP_HOST", ""),
