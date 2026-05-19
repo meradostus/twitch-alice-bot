@@ -4,10 +4,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# Если запущен через bash <(curl ...), BASH_SOURCE[0] будет /dev/fd/NN —
-# в этом случае клонируем репо и перезапускаем install.sh из него.
-_src="${BASH_SOURCE[0]:-}"
-if [[ "$_src" == /dev/fd/* || "$_src" == /proc/self/fd/* || -z "$_src" ]]; then
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Если файлов проекта нет рядом со скриптом (запуск через bash <(curl ...)),
+# клонируем репо и перезапускаем install.sh уже из реальной папки.
+if [[ ! -f "$PROJECT_DIR/requirements.txt" ]]; then
     _dest="${TWITCH_BOT_DIR:-$HOME/twitch-alice-bot}"
     echo "Клонирование репозитория в $_dest ..."
     if [[ -d "$_dest/.git" ]]; then
@@ -18,7 +19,6 @@ if [[ "$_src" == /dev/fd/* || "$_src" == /proc/self/fd/* || -z "$_src" ]]; then
     exec bash "$_dest/install.sh" "$@"
 fi
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
 
 # ── Цвета ────────────────────────────────────────────────────────────────────
