@@ -72,6 +72,16 @@ def _can_switch_to(target: str) -> tuple[bool, str]:
 _UPDATE_SCRIPT = Path(__file__).parent.parent / "update.sh"
 
 
+COMMANDS_TEXT = (
+    "/subscribe &lt;логин&gt; — подписаться на канал\n"
+    "/unsubscribe &lt;логин&gt; — отписаться от канала\n"
+    "/list — список отслеживаемых каналов\n"
+    "/status — состояние сервисов\n"
+    "/mode — режим мониторинга и переключение\n"
+    "/update — обновить бот с GitHub и перезапустить\n"
+    "/help — список всех команд"
+)
+
 _HELP_TEXT = (
     "👾 <b>Twitch-Alice Bot</b>\n\n"
     "<b>Подписки:</b>\n"
@@ -82,7 +92,8 @@ _HELP_TEXT = (
     "/status — состояние сервисов\n"
     "/mode — режим мониторинга и переключение\n\n"
     "<b>Обслуживание:</b>\n"
-    "/update — обновить бот с GitHub и перезапустить"
+    "/update — обновить бот с GitHub и перезапустить\n"
+    "/help — список всех команд"
     + _LOGIN_HINT
 )
 

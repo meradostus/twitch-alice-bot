@@ -9,7 +9,7 @@ from aiogram.types import BotCommand
 from .alice import AliceClient
 from .config import load_config
 from .database import Database
-from .handlers import router
+from .handlers import router, COMMANDS_TEXT
 from .notifier import Notifier
 
 logging.basicConfig(
@@ -73,7 +73,7 @@ async def main():
         loop.add_signal_handler(sig, lambda s=sig: handle_signal(s))
 
     mode_label = "Telegram (@twiMonBot)" if cfg.monitor_mode == "telegram" else "Twitch API"
-    await notifier.system(f"Бот запущен · {mode_label}")
+    await notifier.system(f"Бот запущен · {mode_label}\n\n{COMMANDS_TEXT}", parse_mode="HTML")
     logger.info("Бот запущен")
 
     try:

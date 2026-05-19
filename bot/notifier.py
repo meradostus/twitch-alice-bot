@@ -38,15 +38,15 @@ class Notifier:
         """Telegram-фолбэк когда Алиса недоступна."""
         await self._telegram(f"🔴 {text}")
 
-    async def system(self, text: str):
+    async def system(self, text: str, parse_mode: Optional[str] = None):
         """Системное уведомление о состоянии бота."""
-        await self._telegram(f"🤖 {text}")
+        await self._telegram(f"🤖 {text}", parse_mode=parse_mode)
 
     # --- internals ---
 
-    async def _telegram(self, text: str) -> bool:
+    async def _telegram(self, text: str, parse_mode: Optional[str] = None) -> bool:
         try:
-            await self._bot.send_message(self._chat_id, text)
+            await self._bot.send_message(self._chat_id, text, parse_mode=parse_mode)
             return True
         except TelegramAPIError as exc:
             logger.error("Telegram недоступен: %s", exc)
