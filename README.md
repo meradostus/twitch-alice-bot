@@ -29,6 +29,8 @@ bash <(curl -fsSL https://gitlab.com/dostus2/twitch-alice-bot/-/raw/main/install
 git pull && bash install.sh
 ```
 
+При переустановке скрипт предложит сохранить текущий `.env`.
+
 ## Команды бота в Telegram
 
 | Команда | Описание |
@@ -37,6 +39,8 @@ git pull && bash install.sh
 | `/unsubscribe <логин>` | Остановить слежение |
 | `/list` | Список каналов и текущий статус |
 | `/status` | Состояние Twitch API и Алисы |
+
+**Логин** — часть URL канала на Twitch: `twitch.tv/ninja` → логин `ninja`.
 
 ## Управление сервисом
 
@@ -47,6 +51,12 @@ sudo journalctl -u twitch-alice-bot -f      # логи
 ```
 
 После изменения `.env` — перезапустить сервис.
+
+## Как работает мониторинг
+
+Бот каждые `POLL_INTERVAL` секунд (по умолчанию 60) опрашивает Twitch API.
+Когда канал переходит из offline в online — отправляет голосовое уведомление Алисе.
+Текст уведомления: **«[Ник] начал стрим. Играет в [игра]»**.
 
 ## Структура проекта
 
@@ -64,6 +74,7 @@ twitch-alice-bot/
 │   └── twitch.py           # Twitch Helix API клиент
 ├── data/                   # SQLite база (bot.db)
 ├── .env                    # Конфигурация (не коммитить!)
+├── .env.example            # Шаблон конфигурации
 ├── install.sh              # Установщик
 ├── requirements.txt
 └── twitch-alice-bot.service
