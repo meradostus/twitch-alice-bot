@@ -2,6 +2,8 @@
 
 Мониторинг Twitch-каналов с голосовым оповещением через Яндекс Станцию.
 
+**Репозиторий:** https://github.com/meradostus/twitch-alice-bot
+
 ## Схема оповещений
 
 ```
@@ -30,6 +32,14 @@ git pull && bash install.sh
 ```
 
 При переустановке скрипт предложит сохранить текущий `.env`.
+
+## Клонирование вручную
+
+```bash
+git clone https://github.com/meradostus/twitch-alice-bot.git
+cd twitch-alice-bot
+bash install.sh
+```
 
 ## Команды бота в Telegram
 
