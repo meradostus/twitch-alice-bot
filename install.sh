@@ -221,7 +221,7 @@ cat << 'DOC'
 
   КАК ПОЛУЧИТЬ:
   ─────────────────────────────────────────────────────────
-  1. Открой https://dev.twitch.tv/console
+  1. Открой https://dev.twitch.tv/console/apps
      (войди под своим аккаунтом Twitch)
 
   2. Нажми "Register Your Application" (или "+  Application")
