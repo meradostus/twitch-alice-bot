@@ -17,7 +17,7 @@
 Одна команда на чистом VPS (Ubuntu/Debian):
 
 ```bash
-bash <(curl -fsSL https://gitlab.com/dostus2/twitch-alice-bot/-/raw/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/meradostus/twitch-alice-bot/main/install.sh)
 ```
 
 Скрипт сам установит зависимости, проведёт через настройку всех токенов
