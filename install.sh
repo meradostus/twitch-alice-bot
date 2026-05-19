@@ -4,11 +4,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Если файлов проекта нет рядом со скриптом (запуск через bash <(curl ...)),
-# клонируем репо и перезапускаем install.sh уже из реальной папки.
-if [[ ! -f "$PROJECT_DIR/requirements.txt" ]]; then
+# При bash <(curl ...) BASH_SOURCE[0] указывает на пайп (/dev/fd/NN),
+# а не на обычный файл — это надёжный признак запуска через pipe.
+if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
     _dest="${TWITCH_BOT_DIR:-$HOME/twitch-alice-bot}"
     echo "Клонирование репозитория в $_dest ..."
     if [[ -d "$_dest/.git" ]]; then
@@ -19,6 +17,7 @@ if [[ ! -f "$PROJECT_DIR/requirements.txt" ]]; then
     exec bash "$_dest/install.sh" "$@"
 fi
 
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
 
 # ── Цвета ────────────────────────────────────────────────────────────────────
