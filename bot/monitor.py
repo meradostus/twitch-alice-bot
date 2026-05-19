@@ -69,20 +69,20 @@ class Monitor:
 
     async def _on_stream_start(self, login: str, stream: dict):
         display = stream.get("user_name", login)
-        game = stream.get("game_name", "")
+        category = stream.get("game_name", "")
         title = stream.get("title", "")
 
         tts = f"{display} начал стрим"
-        if game:
-            tts += f". Играет в {game}"
+        if category:
+            tts += f". Категория: {category}"
 
         alice_ok = await self._alice.speak(tts)
         if not alice_ok:
             logger.warning("Алиса недоступна, отправляем в Telegram")
             await self._notifier.error("Алиса недоступна")
             fallback = f"{display} начал стрим"
-            if game:
-                fallback += f"\n🎮 {game}"
+            if category:
+                fallback += f"\n🎮 {category}"
             if title:
                 fallback += f"\n📺 {title}"
             fallback += f"\n🔗 twitch.tv/{login}"

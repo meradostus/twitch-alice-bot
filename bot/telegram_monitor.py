@@ -77,7 +77,7 @@ class TelegramMonitor:
     async def _on_stream_start(self, login: str, display: str, title: str, category: str):
         tts = f"{display} начал стрим"
         if category:
-            tts += f". Играет в {category}"
+            tts += f". Категория: {category}"
 
         alice_ok = await self._alice.speak(tts)
         if not alice_ok:
