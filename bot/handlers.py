@@ -12,14 +12,22 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
+_LOGIN_HINT = (
+    "\n\n"
+    "Логин — это часть URL канала на Twitch:\n"
+    "<code>twitch.tv/<b>ninja</b></code> → логин: <code>ninja</code>"
+)
+
+
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
         "👾 <b>Twitch-Alice Bot</b>\n\n"
-        "/subscribe &lt;канал&gt; — подписаться на канал\n"
-        "/unsubscribe &lt;канал&gt; — отписаться\n"
+        "/subscribe &lt;логин&gt; — подписаться на канал\n"
+        "/unsubscribe &lt;логин&gt; — отписаться\n"
         "/list — список отслеживаемых каналов\n"
-        "/status — состояние сервисов",
+        "/status — состояние сервисов"
+        + _LOGIN_HINT,
         parse_mode="HTML",
     )
 
@@ -28,7 +36,10 @@ async def cmd_start(message: Message):
 async def cmd_subscribe(message: Message, db: Database, twitch: TwitchClient):
     args = (message.text or "").split(maxsplit=1)
     if len(args) < 2 or not args[1].strip():
-        await message.answer("Укажи логин: /subscribe &lt;канал&gt;", parse_mode="HTML")
+        await message.answer(
+            "Укажи логин канала: /subscribe &lt;логин&gt;" + _LOGIN_HINT,
+            parse_mode="HTML",
+        )
         return
 
     login = args[1].strip().lower().lstrip("@").split("/")[-1]
@@ -43,7 +54,10 @@ async def cmd_subscribe(message: Message, db: Database, twitch: TwitchClient):
 async def cmd_unsubscribe(message: Message, db: Database):
     args = (message.text or "").split(maxsplit=1)
     if len(args) < 2 or not args[1].strip():
-        await message.answer("Укажи логин: /unsubscribe &lt;канал&gt;", parse_mode="HTML")
+        await message.answer(
+            "Укажи логин канала: /unsubscribe &lt;логин&gt;" + _LOGIN_HINT,
+            parse_mode="HTML",
+        )
         return
 
     login = args[1].strip().lower().lstrip("@").split("/")[-1]
