@@ -1,0 +1,33 @@
+# Конфиг с секретами — никогда не коммитить
+.env
+
+# Виртуальное окружение
+.venv/
+
+# База данных
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Логи
+*.log

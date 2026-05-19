@@ -1,0 +1,19 @@
+[Unit]
+Description=Twitch Alice Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=grishin
+WorkingDirectory=/path/to/twitch-alice-bot
+EnvironmentFile=/path/to/twitch-alice-bot/.env
+ExecStart=/path/to/twitch-alice-bot/.venv/bin/python -m bot.main
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=twitch-alice-bot
+
+[Install]
+WantedBy=multi-user.target
