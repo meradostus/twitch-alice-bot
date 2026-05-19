@@ -110,6 +110,30 @@ confirm() {
 # Запись строки в .env
 write_env_var() { printf '%s=%s\n' "$1" "'$2'"; }
 
+# Читает значение из существующего .env
+read_env() { grep "^${1}=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d "'"; }
+
+# Ввод с существующим значением как дефолтом.
+# Если значения нет — требует ввод. Для длинных значений показывает усечённый вид.
+ask_or_keep() {
+    local prompt="$1" vn="$2" current="$3" secret="${4:-}" val=""
+    if [[ -n "$current" ]]; then
+        if [[ "$secret" == secret ]]; then
+            printf "${BOLD}  %s${RESET} [${DIM}сохранён — Enter чтобы оставить${RESET}]: " "$prompt"
+            read -rs val; echo
+        else
+            local hint="$current"
+            [[ "${#current}" -gt 28 ]] && hint="${current:0:12}…${current: -4}"
+            printf "${BOLD}  %s${RESET} [${DIM}%s${RESET}]: " "$prompt" "$hint"
+            read -r val
+        fi
+        val="$(trim "$val")"
+        printf -v "$vn" '%s' "${val:-$current}"
+    else
+        ask_required "$prompt" "$vn" "$secret"
+    fi
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # БАННЕР
 # ─────────────────────────────────────────────────────────────────────────────
@@ -196,18 +220,38 @@ ok "Зависимости установлены"
 step_hdr 4 "Конфигурация"
 
 ENV_FILE="$PROJECT_DIR/.env"
-SKIP_CONFIG=false
+
+# Загружаем существующие значения — для частичной переустановки
+_ex_monitor_mode=""
+_ex_twitch_id="" _ex_twitch_secret=""
+_ex_tg_api_id="" _ex_tg_api_hash="" _ex_tg_phone=""
+_ex_tg_token="" _ex_tg_chat_id=""
+_ex_yandex_token="" _ex_yandex_device_id="" _ex_yandex_platform=""
+_ex_email_host="" _ex_email_port="" _ex_email_user=""
+_ex_email_pass="" _ex_email_from="" _ex_email_to=""
+_ex_poll_interval=""
 
 if [[ -f "$ENV_FILE" ]]; then
-    warn "Файл .env уже существует"
-    if ! confirm "Перезаписать конфигурацию?"; then
-        ok "Конфигурация оставлена без изменений"
-        SKIP_CONFIG=true
-    fi
+    ok "Найден .env — ранее введённые данные будут предложены как значения по умолчанию"
+    _ex_monitor_mode="$(read_env MONITOR_MODE)"
+    _ex_twitch_id="$(read_env TWITCH_CLIENT_ID)"
+    _ex_twitch_secret="$(read_env TWITCH_CLIENT_SECRET)"
+    _ex_tg_api_id="$(read_env TELEGRAM_API_ID)"
+    _ex_tg_api_hash="$(read_env TELEGRAM_API_HASH)"
+    _ex_tg_phone="$(read_env TELEGRAM_PHONE)"
+    _ex_tg_token="$(read_env TELEGRAM_BOT_TOKEN)"
+    _ex_tg_chat_id="$(read_env TELEGRAM_CHAT_ID)"
+    _ex_yandex_token="$(read_env YANDEX_TOKEN)"
+    _ex_yandex_device_id="$(read_env YANDEX_DEVICE_ID)"
+    _ex_yandex_platform="$(read_env YANDEX_PLATFORM)"
+    _ex_email_host="$(read_env EMAIL_SMTP_HOST)"
+    _ex_email_port="$(read_env EMAIL_SMTP_PORT)"
+    _ex_email_user="$(read_env EMAIL_USERNAME)"
+    _ex_email_pass="$(read_env EMAIL_PASSWORD)"
+    _ex_email_from="$(read_env EMAIL_FROM)"
+    _ex_email_to="$(read_env EMAIL_TO)"
+    _ex_poll_interval="$(read_env POLL_INTERVAL)"
 fi
-
-
-if [[ "$SKIP_CONFIG" == false ]]; then
 
 # ═════════════════════════════════════════════════════════════════════════════
 h1 "РЕЖИМ МОНИТОРИНГА"
@@ -224,6 +268,14 @@ DOC
 echo
 
 monitor_mode_value=""
+if [[ -n "$_ex_monitor_mode" ]]; then
+    printf "  Текущий режим: ${BOLD}%s${RESET}\n" "$_ex_monitor_mode"
+    if confirm "Оставить текущий режим?"; then
+        monitor_mode_value="$_ex_monitor_mode"
+        ok "Режим: $monitor_mode_value"
+    fi
+fi
+
 while [[ "$monitor_mode_value" != "twitch" && "$monitor_mode_value" != "telegram" ]]; do
     printf "${BOLD}  Выбери режим:${RESET}\n"
     printf "    1) Twitch API\n"
@@ -273,8 +325,8 @@ cat << 'DOC'
 DOC
 echo
 
-ask_required "Twitch Client ID"     twitch_client_id
-ask_required "Twitch Client Secret" twitch_client_secret
+ask_or_keep "Twitch Client ID"     twitch_client_id     "$_ex_twitch_id"
+ask_or_keep "Twitch Client Secret" twitch_client_secret "$_ex_twitch_secret"
 
 fi  # конец блока twitch
 
@@ -313,8 +365,8 @@ else
   ─────────────────────────────────────────────────────────
 DOC
     echo
-    ask_required "Telegram API ID (число)"    tg_api_id
-    ask_required "Telegram API Hash (строка)" tg_api_hash
+    ask_or_keep "Telegram API ID (число)"    tg_api_id    "$_ex_tg_api_id"
+    ask_or_keep "Telegram API Hash (строка)" tg_api_hash  "$_ex_tg_api_hash"
 fi
 
 cat << 'DOC'
@@ -324,13 +376,18 @@ cat << 'DOC'
 DOC
 echo
 
-ask_required "Номер телефона" tg_phone
+ask_or_keep "Номер телефона" tg_phone "$_ex_tg_phone"
 
 echo
+mkdir -p "$PROJECT_DIR/data"
+
+# Пропускаем авторизацию если сессия уже существует
+if [[ -f "$PROJECT_DIR/data/telegram_user.session" ]]; then
+    ok "Telegram-сессия уже существует — авторизация не нужна"
+else
 info "Авторизуюсь в Telegram. На твой телефон придёт код подтверждения..."
 echo
 
-mkdir -p "$PROJECT_DIR/data"
 TMPAUTH=$(mktemp /tmp/tg_auth_XXXXXX.py)
 cat > "$TMPAUTH" << 'PYEOF'
 import sys, re, asyncio
@@ -369,6 +426,7 @@ else
 fi
 rm -f "$TMPAUTH"
 
+fi  # конец блока else (авторизация)
 fi  # конец блока telegram
 
 
@@ -390,9 +448,13 @@ cat << 'DOC'
 DOC
 echo
 
-ask_required "Bot Token" tg_token
+ask_or_keep "Bot Token" tg_token "$_ex_tg_token"
 
-# ── Авто-определение Chat ID ─────────────────────────────────────────────────
+# ── Chat ID ──────────────────────────────────────────────────────────────────
+if [[ -n "$_ex_tg_chat_id" ]]; then
+    ok "Chat ID уже сохранён: $_ex_tg_chat_id"
+    ask_with_default "Chat ID" tg_chat_id "$_ex_tg_chat_id"
+else
 echo
 cat << 'DOC'
   Теперь нужен Chat ID — числовой идентификатор чата, куда бот
@@ -458,6 +520,7 @@ else
 DOC
     ask_required "Chat ID (число, для группы — отрицательное)" tg_chat_id
 fi
+fi  # конец блока chat_id
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -491,9 +554,21 @@ cat << 'DOC'
 DOC
 echo
 
-ask_required "Yandex OAuth Token" yandex_token
+ask_or_keep "Yandex OAuth Token" yandex_token "$_ex_yandex_token"
 
-# ── Авто-определение устройства ──────────────────────────────────────────────
+# ── Устройство ────────────────────────────────────────────────────────────────
+if [[ -n "$_ex_yandex_device_id" && -n "$_ex_yandex_platform" ]]; then
+    ok "Устройство уже настроено: $_ex_yandex_device_id ($_ex_yandex_platform)"
+    if confirm "Оставить текущее устройство?"; then
+        yandex_device_id="$_ex_yandex_device_id"
+        yandex_platform="$_ex_yandex_platform"
+        rm -f "$TMPDEV" 2>/dev/null || true
+    else
+        _ex_yandex_device_id=""  # сбросить чтобы запустить авто-определение
+    fi
+fi
+
+if [[ -z "$_ex_yandex_device_id" ]]; then
 echo
 info "Получаю список устройств Яндекс..."
 echo
@@ -597,6 +672,7 @@ PYEOF
     done
 fi
 rm -f "$TMPDEV"
+fi  # конец блока авто-определения устройства
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -622,18 +698,38 @@ cat << 'DOC'
 DOC
 echo
 
-if confirm "Настроить резервные уведомления по email?" n; then
-    ask_required     "SMTP хост (напр. smtp.gmail.com)" email_smtp_host
-    ask_with_default "SMTP порт"                        email_smtp_port "587"
-    ask_required     "Email отправителя"                email_username
-    ask_required     "Пароль / App Password"            email_password secret
-    email_from="$email_username"
-    ask_required     "Email получателя (куда слать)"    email_to
-else
-    email_smtp_host=""; email_smtp_port="587"
-    email_username=""; email_password=""
-    email_from=""; email_to=""
-    info "Email пропущен"
+_email_already_set=false
+[[ -n "$_ex_email_host" ]] && _email_already_set=true
+
+if [[ "$_email_already_set" == true ]]; then
+    ok "Email уже настроен: $_ex_email_user → $_ex_email_host"
+    if ! confirm "Изменить настройки email?"; then
+        email_smtp_host="$_ex_email_host"
+        email_smtp_port="${_ex_email_port:-587}"
+        email_username="$_ex_email_user"
+        email_password="$_ex_email_pass"
+        email_from="$_ex_email_from"
+        email_to="$_ex_email_to"
+        info "Email оставлен без изменений"
+    else
+        _email_already_set=false
+    fi
+fi
+
+if [[ "$_email_already_set" == false ]]; then
+    if confirm "Настроить резервные уведомления по email?" n; then
+        ask_or_keep     "SMTP хост (напр. smtp.gmail.com)" email_smtp_host "$_ex_email_host"
+        ask_with_default "SMTP порт"                       email_smtp_port "${_ex_email_port:-587}"
+        ask_or_keep     "Email отправителя"                email_username  "$_ex_email_user"
+        ask_required    "Пароль / App Password"            email_password secret
+        email_from="$email_username"
+        ask_or_keep     "Email получателя (куда слать)"    email_to        "$_ex_email_to"
+    else
+        email_smtp_host=""; email_smtp_port="587"
+        email_username=""; email_password=""
+        email_from=""; email_to=""
+        info "Email пропущен"
+    fi
 fi
 
 
@@ -649,7 +745,7 @@ cat << 'DOC'
 DOC
 echo
 
-ask_with_default "Интервал опроса (секунды)" poll_interval "60"
+ask_with_default "Интервал опроса (секунды)" poll_interval "${_ex_poll_interval:-60}"
 if [[ ! "$poll_interval" =~ ^[0-9]+$ ]] || [[ "$poll_interval" -lt 30 ]]; then
     warn "Установлено минимальное значение: 30"
     poll_interval=30
@@ -700,7 +796,6 @@ EOF
 chmod 600 "$ENV_FILE"
 ok "Файл .env сохранён (права 600 — читает только владелец)"
 
-fi  # конец блока SKIP_CONFIG
 
 
 # ─────────────────────────────────────────────────────────────────────────────
