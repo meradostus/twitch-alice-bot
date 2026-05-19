@@ -26,7 +26,7 @@ bash <(curl -fsSL https://gitlab.com/dostus2/twitch-alice-bot/-/raw/main/install
 ## Обновление / переустановка
 
 ```bash
-cd /path/to/twitch-alice-bot && git pull && bash install.sh
+git pull && bash install.sh
 ```
 
 ## Команды бота в Telegram

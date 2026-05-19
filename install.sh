@@ -635,8 +635,10 @@ SERVICE_DST="/etc/systemd/system/twitch-alice-bot.service"
 
 if confirm "Установить как системный сервис (запуск при загрузке ОС)?"; then
     # Подставляем текущего пользователя в unit-файл
-    sed "s/User=grishin/User=$CURRENT_USER/g" "$SERVICE_SRC" \
-        | sudo tee "$SERVICE_DST" > /dev/null
+    sed \
+        -e "s|__USER__|$CURRENT_USER|g" \
+        -e "s|__PROJECT_DIR__|$PROJECT_DIR|g" \
+        "$SERVICE_SRC" | sudo tee "$SERVICE_DST" > /dev/null
     sudo systemctl daemon-reload
     sudo systemctl enable twitch-alice-bot
     sudo systemctl restart twitch-alice-bot

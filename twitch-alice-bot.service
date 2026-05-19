@@ -5,10 +5,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=grishin
-WorkingDirectory=/path/to/twitch-alice-bot
-EnvironmentFile=/path/to/twitch-alice-bot/.env
-ExecStart=/path/to/twitch-alice-bot/.venv/bin/python -m bot.main
+User=__USER__
+WorkingDirectory=__PROJECT_DIR__
+EnvironmentFile=__PROJECT_DIR__/.env
+ExecStart=__PROJECT_DIR__/.venv/bin/python -m bot.main
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
