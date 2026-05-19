@@ -37,6 +37,7 @@ async def main():
         BotCommand(command="list",        description="Список отслеживаемых каналов"),
         BotCommand(command="status",      description="Состояние сервисов"),
         BotCommand(command="mode",        description="Режим мониторинга и переключение"),
+        BotCommand(command="update",      description="Обновить бот с GitHub и перезапустить"),
     ])
     notifier = Notifier(bot, cfg.telegram_chat_id, cfg.email)
 
@@ -44,6 +45,7 @@ async def main():
     dp["db"] = db
     dp["alice"] = alice
     dp["monitor_mode"] = cfg.monitor_mode
+    dp["admin_chat_id"] = cfg.telegram_chat_id
     dp.include_router(router)
 
     stop_event = asyncio.Event()

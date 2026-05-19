@@ -69,6 +69,9 @@ def _can_switch_to(target: str) -> tuple[bool, str]:
 
 # ── команды ───────────────────────────────────────────────────────────────────
 
+_UPDATE_SCRIPT = Path(__file__).parent.parent / "update.sh"
+
+
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
@@ -77,7 +80,8 @@ async def cmd_start(message: Message):
         "/unsubscribe &lt;логин&gt; — отписаться\n"
         "/list — список отслеживаемых каналов\n"
         "/status — состояние сервисов\n"
-        "/mode — режим мониторинга"
+        "/mode — режим мониторинга\n"
+        "/update — обновить бот с GitHub"
         + _LOGIN_HINT,
         parse_mode="HTML",
     )
@@ -199,5 +203,37 @@ async def cb_switch_mode(callback: CallbackQuery, monitor_mode: str = "twitch"):
         parse_mode="HTML",
     )
     await callback.answer()
+    await asyncio.sleep(1)
+    os._exit(0)
+
+
+# ── /update ───────────────────────────────────────────────────────────────────
+
+@router.message(Command("update"))
+async def cmd_update(message: Message, admin_chat_id: int):
+    if message.chat.id != admin_chat_id:
+        return
+
+    status_msg = await message.answer("⏳ Получаю обновления...")
+
+    proc = await asyncio.create_subprocess_exec(
+        "bash", str(_UPDATE_SCRIPT),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    stdout, _ = await proc.communicate()
+    output = stdout.decode().strip() or "(нет вывода)"
+
+    if proc.returncode != 0:
+        await status_msg.edit_text(
+            f"❌ Ошибка обновления:\n<code>{output[-1500:]}</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    await status_msg.edit_text(
+        f"✅ Обновлено:\n<code>{output[-1500:]}</code>\n\nПерезапускаю...",
+        parse_mode="HTML",
+    )
     await asyncio.sleep(1)
     os._exit(0)
