@@ -4,6 +4,7 @@ import os
 import signal
 
 from aiogram import Bot, Dispatcher
+from aiogram.types import BotCommand
 
 from .alice import AliceClient
 from .config import load_config
@@ -30,6 +31,13 @@ async def main():
     await alice.start()
 
     bot = Bot(token=cfg.telegram_bot_token)
+    await bot.set_my_commands([
+        BotCommand(command="subscribe",   description="Подписаться на канал"),
+        BotCommand(command="unsubscribe", description="Отписаться от канала"),
+        BotCommand(command="list",        description="Список отслеживаемых каналов"),
+        BotCommand(command="status",      description="Состояние сервисов"),
+        BotCommand(command="mode",        description="Режим мониторинга и переключение"),
+    ])
     notifier = Notifier(bot, cfg.telegram_chat_id, cfg.email)
 
     dp = Dispatcher()

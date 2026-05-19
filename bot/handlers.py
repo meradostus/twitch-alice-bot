@@ -1,9 +1,19 @@
+import asyncio
 import logging
+import os
+import re
+import signal
+from pathlib import Path
 from typing import Optional
 
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 
 from .alice import AliceClient
 from .database import Database
@@ -12,13 +22,52 @@ from .twitch import TwitchClient
 logger = logging.getLogger(__name__)
 router = Router()
 
+_ENV_PATH = Path(__file__).parent.parent / ".env"
+_SESSION_PATH = Path(__file__).parent.parent / "data" / "telegram_user.session"
 
 _LOGIN_HINT = (
-    "\n\n"
-    "Логин — это часть URL канала на Twitch:\n"
+    "\n\nЛогин — это часть URL канала на Twitch:\n"
     "<code>twitch.tv/<b>ninja</b></code> → логин: <code>ninja</code>"
 )
 
+
+# ── .env helpers ──────────────────────────────────────────────────────────────
+
+def _read_env(key: str) -> str:
+    if not _ENV_PATH.exists():
+        return ""
+    for line in _ENV_PATH.read_text().splitlines():
+        m = re.match(rf"^{key}='?([^'\n]*)'?", line.strip())
+        if m:
+            return m.group(1)
+    return ""
+
+
+def _write_env(key: str, value: str) -> None:
+    content = _ENV_PATH.read_text() if _ENV_PATH.exists() else ""
+    new_line = f"{key}='{value}'"
+    if re.search(rf"^{key}=", content, re.MULTILINE):
+        content = re.sub(rf"^{key}=.*$", new_line, content, flags=re.MULTILINE)
+    else:
+        content += f"\n{new_line}\n"
+    _ENV_PATH.write_text(content)
+
+
+def _can_switch_to(target: str) -> tuple[bool, str]:
+    if target == "twitch":
+        if not _read_env("TWITCH_CLIENT_ID") or not _read_env("TWITCH_CLIENT_SECRET"):
+            return False, "нет Twitch credentials — запусти <code>bash switch_mode.sh</code>"
+        return True, ""
+    if target == "telegram":
+        if not _read_env("TELEGRAM_API_ID"):
+            return False, "нет Telegram API credentials — запусти <code>bash switch_mode.sh</code>"
+        if not _SESSION_PATH.exists():
+            return False, "нет Telegram-сессии — запусти <code>bash switch_mode.sh</code>"
+        return True, ""
+    return False, "неизвестный режим"
+
+
+# ── команды ───────────────────────────────────────────────────────────────────
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
@@ -28,7 +77,7 @@ async def cmd_start(message: Message):
         "/unsubscribe &lt;логин&gt; — отписаться\n"
         "/list — список отслеживаемых каналов\n"
         "/status — состояние сервисов\n"
-        "/mode — текущий режим мониторинга"
+        "/mode — режим мониторинга"
         + _LOGIN_HINT,
         parse_mode="HTML",
     )
@@ -43,7 +92,6 @@ async def cmd_subscribe(message: Message, db: Database, twitch: Optional[TwitchC
             parse_mode="HTML",
         )
         return
-
     login = args[1].strip().lower().lstrip("@").split("/")[-1]
     added = await db.add_channel(login)
     if added:
@@ -61,7 +109,6 @@ async def cmd_unsubscribe(message: Message, db: Database):
             parse_mode="HTML",
         )
         return
-
     login = args[1].strip().lower().lstrip("@").split("/")[-1]
     removed = await db.remove_channel(login)
     if removed:
@@ -78,13 +125,11 @@ async def cmd_list(message: Message, db: Database):
             "Список пуст. Добавь каналы через /subscribe &lt;канал&gt;", parse_mode="HTML"
         )
         return
-
     lines = []
     for ch in channels:
         name = ch["display_name"] or ch["login"]
         status = "🔴 Live" if ch["is_live"] else "⚫ Offline"
         lines.append(f"{status} <b>{name}</b>")
-
     await message.answer("\n".join(lines), parse_mode="HTML")
 
 
@@ -98,14 +143,12 @@ async def cmd_status(
 ):
     alice_ok = await alice.check_connection()
     channels = await db.get_channels()
-
     lines = []
     if monitor_mode == "twitch" and twitch is not None:
         twitch_ok = await twitch.check_connection()
         lines.append(f"Twitch API: {'✅' if twitch_ok else '❌'}")
     else:
         lines.append("Источник:   ✅ @twiMonBot")
-
     lines += [
         f"Алиса:      {'✅' if alice_ok else '❌'}",
         f"Каналов:    {len(channels)}",
@@ -116,15 +159,45 @@ async def cmd_status(
 
 @router.message(Command("mode"))
 async def cmd_mode(message: Message, monitor_mode: str = "twitch"):
-    if monitor_mode == "telegram":
-        desc = "Telegram (@twiMonBot) — уведомления от @twiMonBot"
-    else:
-        desc = "Twitch API — прямой опрос Twitch каждые N секунд"
+    target = "telegram" if monitor_mode == "twitch" else "twitch"
+    mode_desc = "Telegram (@twiMonBot)" if monitor_mode == "telegram" else "Twitch API"
+    can_switch, reason = _can_switch_to(target)
 
-    await message.answer(
-        f"📡 <b>Режим мониторинга:</b> <code>{monitor_mode}</code>\n"
-        f"{desc}\n\n"
-        f"Сменить режим:\n"
-        f"<code>bash switch_mode.sh</code>",
+    text = f"📡 <b>Режим мониторинга:</b> <code>{monitor_mode}</code>\n{mode_desc}"
+
+    if can_switch:
+        kb = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(
+                text=f"🔄 Переключить на {target}",
+                callback_data=f"switch_mode:{target}",
+            )
+        ]])
+        await message.answer(text, parse_mode="HTML", reply_markup=kb)
+    else:
+        text += f"\n\n⚠️ Переключение на <code>{target}</code> недоступно:\n{reason}"
+        await message.answer(text, parse_mode="HTML")
+
+
+# ── callback: смена режима ────────────────────────────────────────────────────
+
+@router.callback_query(lambda c: c.data and c.data.startswith("switch_mode:"))
+async def cb_switch_mode(callback: CallbackQuery, monitor_mode: str = "twitch"):
+    target = (callback.data or "").split(":", 1)[1]
+
+    if target == monitor_mode:
+        await callback.answer("Уже в этом режиме")
+        return
+
+    can_switch, reason = _can_switch_to(target)
+    if not can_switch:
+        await callback.answer("Невозможно переключить", show_alert=True)
+        return
+
+    _write_env("MONITOR_MODE", target)
+    await callback.message.edit_text(
+        f"✅ Режим изменён на <code>{target}</code>. Перезапуск...",
         parse_mode="HTML",
     )
+    await callback.answer()
+    await asyncio.sleep(1)
+    os._exit(0)
