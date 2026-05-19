@@ -562,7 +562,6 @@ if [[ -n "$_ex_yandex_device_id" && -n "$_ex_yandex_platform" ]]; then
     if confirm "Оставить текущее устройство?"; then
         yandex_device_id="$_ex_yandex_device_id"
         yandex_platform="$_ex_yandex_platform"
-        rm -f "$TMPDEV" 2>/dev/null || true
     else
         _ex_yandex_device_id=""  # сбросить чтобы запустить авто-определение
     fi
