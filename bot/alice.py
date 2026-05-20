@@ -26,7 +26,8 @@ class AliceClient:
         if self._session:
             await self._session.close()
 
-    async def speak(self, text: str) -> bool:
+    async def speak(self, text: str) -> str | None:
+        """None — успех, строка — сообщение об ошибке."""
         try:
             async with self._session.post(_SEND_URL, json={
                 "device_id": self._device_id,
@@ -37,13 +38,14 @@ class AliceClient:
                 },
             }) as resp:
                 if resp.status == 200:
-                    return True
+                    return None
                 body = await resp.text()
-                logger.warning("Алиса вернула %s: %s", resp.status, body)
-                return False
+                error = f"HTTP {resp.status}: {body}"
+                logger.warning("Алиса вернула %s", error)
+                return error
         except Exception as exc:
-            logger.warning("Алиса недоступна: %s", exc)
-            return False
+            logger.exception("Алиса недоступна")
+            return str(exc)
 
     async def check_connection(self) -> bool:
         try:

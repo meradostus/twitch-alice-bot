@@ -50,6 +50,7 @@ bash install.sh
 | `/list` | Список каналов и текущий статус |
 | `/status` | Состояние сервисов |
 | `/mode` | Текущий режим мониторинга и переключение |
+| `/speak <текст>` | Произнести текст через Алису |
 | `/update` | Обновить бот с GitHub и перезапустить |
 | `/help` | Список всех команд |
 
@@ -89,7 +90,8 @@ bash switch_mode.sh
 ```bash
 sudo systemctl status twitch-alice-bot      # статус
 sudo systemctl restart twitch-alice-bot     # перезапуск
-sudo journalctl -u twitch-alice-bot -f      # логи
+sudo journalctl -u twitch-alice-bot -f      # логи (journald)
+tail -f logs/bot.log                        # логи в файл
 ```
 
 После изменения `.env` вручную — перезапустить сервис.
@@ -110,6 +112,7 @@ twitch-alice-bot/
 │   ├── notifier.py           # Цепочка уведомлений: Telegram → Email
 │   └── twitch.py             # Twitch Helix API клиент
 ├── data/                     # SQLite база и сессии (не коммитить)
+├── logs/                     # Лог-файлы (ротация по дням, хранится 7 дней)
 ├── .env                      # Конфигурация (не коммитить!)
 ├── .env.example              # Шаблон конфигурации
 ├── install.sh                # Установщик

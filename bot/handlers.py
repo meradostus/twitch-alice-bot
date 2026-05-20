@@ -78,6 +78,7 @@ COMMANDS_TEXT = (
     "/list — список отслеживаемых каналов\n"
     "/status — состояние сервисов\n"
     "/mode — режим мониторинга и переключение\n"
+    "/speak &lt;текст&gt; — произнести текст через Алису\n"
     "/update — обновить бот с GitHub и перезапустить\n"
     "/help — список всех команд"
 )
@@ -91,6 +92,8 @@ _HELP_TEXT = (
     "<b>Информация:</b>\n"
     "/status — состояние сервисов\n"
     "/mode — режим мониторинга и переключение\n\n"
+    "<b>Алиса:</b>\n"
+    "/speak &lt;текст&gt; — произнести текст через Алису\n\n"
     "<b>Обслуживание:</b>\n"
     "/update — обновить бот с GitHub и перезапустить\n"
     "/help — список всех команд"
@@ -221,6 +224,24 @@ async def cb_switch_mode(callback: CallbackQuery, monitor_mode: str = "twitch"):
     await callback.answer()
     await asyncio.sleep(1)
     os._exit(0)
+
+
+# ── /speak ────────────────────────────────────────────────────────────────────
+
+@router.message(Command("speak"))
+async def cmd_speak(message: Message, alice: AliceClient, admin_chat_id: int):
+    if message.chat.id != admin_chat_id:
+        return
+    args = (message.text or "").split(maxsplit=1)
+    if len(args) < 2 or not args[1].strip():
+        await message.answer("Укажи текст: /speak &lt;текст&gt;", parse_mode="HTML")
+        return
+    text = args[1].strip()
+    error = await alice.speak(text)
+    if error is None:
+        await message.answer("✅ Алиса произносит текст")
+    else:
+        await message.answer(f"❌ Алиса недоступна: <code>{error}</code>", parse_mode="HTML")
 
 
 # ── /update ───────────────────────────────────────────────────────────────────

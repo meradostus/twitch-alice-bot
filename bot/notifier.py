@@ -48,11 +48,11 @@ class Notifier:
         try:
             await self._bot.send_message(self._chat_id, text, parse_mode=parse_mode)
             return True
-        except TelegramAPIError as exc:
-            logger.error("Telegram недоступен: %s", exc)
+        except TelegramAPIError:
+            logger.exception("Telegram недоступен")
             return False
-        except Exception as exc:
-            logger.error("Telegram ошибка: %s", exc)
+        except Exception:
+            logger.exception("Telegram ошибка")
             return False
 
     async def _email(self, subject: str, body: str):
@@ -62,8 +62,8 @@ class Notifier:
                 None, self._send_email_sync, cfg, subject, body
             )
             logger.info("Email отправлен на %s", cfg.to_addr)
-        except Exception as exc:
-            logger.error("Email ошибка: %s", exc)
+        except Exception:
+            logger.exception("Email ошибка")
 
     @staticmethod
     def _send_email_sync(cfg: EmailConfig, subject: str, body: str):

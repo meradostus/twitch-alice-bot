@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import signal
+from logging.handlers import TimedRotatingFileHandler
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
@@ -12,11 +13,26 @@ from .database import Database
 from .handlers import router, COMMANDS_TEXT
 from .notifier import Notifier
 
+_LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
+_LOG_DATE = "%Y-%m-%d %H:%M:%S"
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format=_LOG_FORMAT,
+    datefmt=_LOG_DATE,
 )
+
+_log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+os.makedirs(_log_dir, exist_ok=True)
+_file_handler = TimedRotatingFileHandler(
+    os.path.join(_log_dir, "bot.log"),
+    when="midnight",
+    backupCount=7,
+    encoding="utf-8",
+)
+_file_handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE))
+logging.getLogger().addHandler(_file_handler)
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,6 +53,7 @@ async def main():
         BotCommand(command="list",        description="Список отслеживаемых каналов"),
         BotCommand(command="status",      description="Состояние сервисов"),
         BotCommand(command="mode",        description="Режим мониторинга и переключение"),
+        BotCommand(command="speak",       description="Произнести текст через Алису"),
         BotCommand(command="update",      description="Обновить бот с GitHub и перезапустить"),
         BotCommand(command="help",        description="Список всех команд"),
     ])
