@@ -29,14 +29,11 @@ class AliceClient:
     async def speak(self, text: str) -> str | None:
         """None — успех, строка — сообщение об ошибке."""
         try:
-            async with self._session.post(_SEND_URL, json={
-                "device_id": self._device_id,
-                "platform": self._platform,
-                "payload": {
-                    "command": "phrase_speak_it",
-                    "text": text,
-                },
-            }) as resp:
+            async with self._session.post(
+                _SEND_URL,
+                params={"device_id": self._device_id, "platform": self._platform},
+                json={"payload": {"command": "phrase_speak_it", "text": text}},
+            ) as resp:
                 if resp.status == 200:
                     return None
                 body = await resp.text()
