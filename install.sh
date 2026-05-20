@@ -226,6 +226,7 @@ _ex_monitor_mode=""
 _ex_twitch_id="" _ex_twitch_secret=""
 _ex_tg_api_id="" _ex_tg_api_hash="" _ex_tg_phone=""
 _ex_tg_token="" _ex_tg_chat_id=""
+_ex_proxy_server="" _ex_proxy_port="" _ex_proxy_secret=""
 _ex_yandex_token="" _ex_yandex_device_id="" _ex_yandex_platform=""
 _ex_email_host="" _ex_email_port="" _ex_email_user=""
 _ex_email_pass="" _ex_email_from="" _ex_email_to=""
@@ -241,6 +242,9 @@ if [[ -f "$ENV_FILE" ]]; then
     _ex_tg_phone="$(read_env TELEGRAM_PHONE)"
     _ex_tg_token="$(read_env TELEGRAM_BOT_TOKEN)"
     _ex_tg_chat_id="$(read_env TELEGRAM_CHAT_ID)"
+    _ex_proxy_server="$(read_env TELEGRAM_PROXY_SERVER)"
+    _ex_proxy_port="$(read_env TELEGRAM_PROXY_PORT)"
+    _ex_proxy_secret="$(read_env TELEGRAM_PROXY_SECRET)"
     _ex_yandex_token="$(read_env YANDEX_TOKEN)"
     _ex_yandex_device_id="$(read_env YANDEX_DEVICE_ID)"
     _ex_yandex_platform="$(read_env YANDEX_PLATFORM)"
@@ -524,6 +528,69 @@ fi  # конец блока chat_id
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+h1 "TELEGRAM MTProto ПРОКСИ (опционально)"
+cat << 'DOC'
+  Если бот работает в России, для работы Telegram через MTProto прокси
+  укажи ссылку вида:
+
+    tg://proxy?server=...&port=...&secret=...
+
+  Ссылку можно получить у провайдера прокси или из настроек Telegram.
+  Если Telegram доступен напрямую — пропусти этот шаг.
+DOC
+echo
+
+# Парсим tg://proxy?... ссылку через Python
+parse_proxy_link() {
+    local link="$1"
+    "$VENV/bin/python3" -c "
+from urllib.parse import urlparse, parse_qs
+link = '''$link'''.strip()
+parsed = urlparse(link)
+if parsed.scheme == 'tg' and parsed.hostname == 'proxy':
+    p = parse_qs(parsed.query)
+    server = p.get('server', [''])[0]
+    secret = p.get('secret', [''])[0]
+    port   = p.get('port', ['443'])[0]
+    if server and secret:
+        print(f'{server}|{port}|{secret}')
+" 2>/dev/null || true
+}
+
+proxy_server=""; proxy_port=""; proxy_secret=""
+
+if [[ -n "$_ex_proxy_server" ]]; then
+    ok "Прокси уже настроен: $_ex_proxy_server:${_ex_proxy_port:-443}"
+    if confirm "Оставить текущий прокси?"; then
+        proxy_server="$_ex_proxy_server"
+        proxy_port="$_ex_proxy_port"
+        proxy_secret="$_ex_proxy_secret"
+    else
+        _ex_proxy_server=""
+    fi
+fi
+
+if [[ -z "$_ex_proxy_server" ]]; then
+    if confirm "Настроить MTProto-прокси для Telegram?" n; then
+        while true; do
+            ask_required "Ссылка на прокси (tg://proxy?...)" _proxy_link
+            _parsed="$(parse_proxy_link "$_proxy_link")"
+            if [[ -n "$_parsed" ]]; then
+                proxy_server="${_parsed%%|*}"; _rest="${_parsed#*|}"
+                proxy_port="${_rest%%|*}";    proxy_secret="${_rest#*|}"
+                ok "Прокси: $proxy_server:$proxy_port"
+                break
+            else
+                warn "Неверный формат. Ожидается: tg://proxy?server=...&port=...&secret=..."
+            fi
+        done
+    else
+        info "Прокси пропущен"
+    fi
+fi
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 h1 "ЯНДЕКС АЛИСА (Яндекс Станция)"
 cat << 'DOC'
   OAuth-токен Яндекса нужен для отправки голосовых команд на Станцию
@@ -773,6 +840,11 @@ $(write_env_var TELEGRAM_CHAT_ID   "$tg_chat_id")
 $(write_env_var TELEGRAM_API_ID   "$tg_api_id")
 $(write_env_var TELEGRAM_API_HASH "$tg_api_hash")
 $(write_env_var TELEGRAM_PHONE    "$tg_phone")
+
+# Telegram MTProto прокси (опционально — для работы из России)
+$(write_env_var TELEGRAM_PROXY_SERVER "$proxy_server")
+$(write_env_var TELEGRAM_PROXY_PORT   "$proxy_port")
+$(write_env_var TELEGRAM_PROXY_SECRET "$proxy_secret")
 
 # Яндекс Алиса
 $(write_env_var YANDEX_TOKEN     "$yandex_token")

@@ -54,6 +54,7 @@ async def main():
         BotCommand(command="status",      description="Состояние сервисов"),
         BotCommand(command="mode",        description="Режим мониторинга и переключение"),
         BotCommand(command="speak",       description="Произнести текст через Алису"),
+        BotCommand(command="proxy",       description="MTProto прокси для Telegram"),
         BotCommand(command="update",      description="Обновить бот с GitHub и перезапустить"),
         BotCommand(command="help",        description="Список всех команд"),
     ])

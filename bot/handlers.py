@@ -5,6 +5,7 @@ import re
 import signal
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse, parse_qs
 
 from aiogram import Router
 from aiogram.filters import Command
@@ -79,6 +80,7 @@ COMMANDS_TEXT = (
     "/status — состояние сервисов\n"
     "/mode — режим мониторинга и переключение\n"
     "/speak &lt;текст&gt; — произнести текст через Алису\n"
+    "/proxy — MTProto прокси для Telegram\n"
     "/update — обновить бот с GitHub и перезапустить\n"
     "/help — список всех команд"
 )
@@ -95,6 +97,7 @@ _HELP_TEXT = (
     "<b>Алиса:</b>\n"
     "/speak &lt;текст&gt; — произнести текст через Алису\n\n"
     "<b>Обслуживание:</b>\n"
+    "/proxy — просмотр и смена MTProto прокси\n"
     "/update — обновить бот с GitHub и перезапустить\n"
     "/help — список всех команд"
     + _LOGIN_HINT
@@ -242,6 +245,84 @@ async def cmd_speak(message: Message, alice: AliceClient, admin_chat_id: int):
         await message.answer("✅ Алиса произносит текст")
     else:
         await message.answer(f"❌ Алиса недоступна: <code>{error}</code>", parse_mode="HTML")
+
+
+# ── /proxy ────────────────────────────────────────────────────────────────────
+
+def _parse_proxy_link(link: str) -> tuple[str, int, str] | None:
+    """Парсит tg://proxy?server=...&port=...&secret=... → (server, port, secret)."""
+    try:
+        parsed = urlparse(link.strip())
+        if parsed.scheme != "tg" or parsed.hostname != "proxy":
+            return None
+        p = parse_qs(parsed.query)
+        server = p.get("server", [""])[0]
+        secret = p.get("secret", [""])[0]
+        port = int(p.get("port", ["443"])[0])
+        if not server or not secret:
+            return None
+        return server, port, secret
+    except Exception:
+        return None
+
+
+@router.message(Command("proxy"))
+async def cmd_proxy(message: Message, admin_chat_id: int):
+    if message.chat.id != admin_chat_id:
+        return
+
+    args = (message.text or "").split(maxsplit=1)
+
+    if len(args) < 2:
+        server = _read_env("TELEGRAM_PROXY_SERVER")
+        if server:
+            port = _read_env("TELEGRAM_PROXY_PORT") or "443"
+            secret = _read_env("TELEGRAM_PROXY_SECRET")
+            await message.answer(
+                f"🌐 <b>MTProto прокси:</b>\n"
+                f"Сервер: <code>{server}:{port}</code>\n"
+                f"Секрет: <code>{secret[:8]}…</code>\n\n"
+                f"Сменить: <code>/proxy tg://proxy?server=…</code>\n"
+                f"Отключить: <code>/proxy off</code>",
+                parse_mode="HTML",
+            )
+        else:
+            await message.answer(
+                "🌐 <b>MTProto прокси:</b> не настроен\n\n"
+                "Настроить: <code>/proxy tg://proxy?server=…&port=…&secret=…</code>",
+                parse_mode="HTML",
+            )
+        return
+
+    arg = args[1].strip()
+
+    if arg.lower() == "off":
+        _write_env("TELEGRAM_PROXY_SERVER", "")
+        _write_env("TELEGRAM_PROXY_PORT", "")
+        _write_env("TELEGRAM_PROXY_SECRET", "")
+        await message.answer("✅ Прокси отключён. Перезапуск...")
+        await asyncio.sleep(1)
+        os._exit(0)
+
+    result = _parse_proxy_link(arg)
+    if not result:
+        await message.answer(
+            "❌ Неверный формат. Ожидается ссылка вида:\n"
+            "<code>tg://proxy?server=…&port=…&secret=…</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    server, port, secret = result
+    _write_env("TELEGRAM_PROXY_SERVER", server)
+    _write_env("TELEGRAM_PROXY_PORT", str(port))
+    _write_env("TELEGRAM_PROXY_SECRET", secret)
+    await message.answer(
+        f"✅ Прокси обновлён: <code>{server}:{port}</code>\nПерезапуск...",
+        parse_mode="HTML",
+    )
+    await asyncio.sleep(1)
+    os._exit(0)
 
 
 # ── /update ───────────────────────────────────────────────────────────────────
