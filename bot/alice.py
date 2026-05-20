@@ -5,8 +5,9 @@ import aiohttp
 
 logger = logging.getLogger(__name__)
 
-_SEND_URL = "https://quasar.yandex.ru/send_command"
 _DEVICES_URL = "https://quasar.yandex.net/glagol/device_list"
+_IOT_INFO_URL = "https://api.iot.yandex.net/v1.0/user/info"
+_IOT_ACTIONS_URL = "https://api.iot.yandex.net/v1.0/devices/actions"
 
 
 class AliceClient:
@@ -14,6 +15,7 @@ class AliceClient:
         self._token = token
         self._device_id = device_id
         self._platform = platform
+        self._iot_id: Optional[str] = None
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def start(self):
@@ -21,6 +23,11 @@ class AliceClient:
             headers={"Authorization": f"OAuth {self._token}"},
             timeout=aiohttp.ClientTimeout(total=10),
         )
+        self._iot_id = await self._resolve_iot_id()
+        if self._iot_id:
+            logger.info("Alice IoT device ID: %s", self._iot_id)
+        else:
+            logger.warning("Не удалось определить IoT device ID для %s", self._device_id)
 
     async def close(self):
         if self._session:
@@ -28,12 +35,21 @@ class AliceClient:
 
     async def speak(self, text: str) -> str | None:
         """None — успех, строка — сообщение об ошибке."""
+        if not self._iot_id:
+            return f"IoT device ID не определён для {self._device_id}"
         try:
-            async with self._session.post(
-                _SEND_URL,
-                params={"device_id": self._device_id, "platform": self._platform},
-                json={"payload": {"command": "phrase_speak_it", "text": text}},
-            ) as resp:
+            async with self._session.post(_IOT_ACTIONS_URL, json={
+                "devices": [{
+                    "id": self._iot_id,
+                    "actions": [{
+                        "type": "devices.capabilities.quasar.server_action",
+                        "state": {
+                            "instance": "phrase_speak_it",
+                            "value": text,
+                        },
+                    }],
+                }],
+            }) as resp:
                 if resp.status == 200:
                     return None
                 body = await resp.text()
@@ -57,3 +73,14 @@ class AliceClient:
             resp.raise_for_status()
             data = await resp.json()
             return data.get("devices", [])
+
+    async def _resolve_iot_id(self) -> Optional[str]:
+        try:
+            async with self._session.get(_IOT_INFO_URL) as resp:
+                data = await resp.json()
+            for d in data.get("devices", []):
+                if d.get("external_id", "").startswith(self._device_id):
+                    return d["id"]
+        except Exception:
+            logger.exception("Ошибка при определении IoT device ID")
+        return None
