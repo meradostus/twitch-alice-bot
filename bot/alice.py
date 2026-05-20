@@ -5,7 +5,7 @@ import aiohttp
 
 logger = logging.getLogger(__name__)
 
-_SEND_URL = "https://quasar.yandex.net/send_command"
+_SEND_URL = "https://quasar.yandex.ru/send_command"
 _DEVICES_URL = "https://quasar.yandex.net/glagol/device_list"
 
 
