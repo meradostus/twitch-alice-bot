@@ -3,3 +3,4 @@ aiohttp==3.10.10
 aiosqlite==0.20.0
 python-dotenv==1.0.1
 telethon==1.37.0
+websockets==13.1

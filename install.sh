@@ -227,7 +227,7 @@ _ex_twitch_id="" _ex_twitch_secret=""
 _ex_tg_api_id="" _ex_tg_api_hash="" _ex_tg_phone=""
 _ex_tg_token="" _ex_tg_chat_id=""
 _ex_proxy_server="" _ex_proxy_port="" _ex_proxy_secret=""
-_ex_yandex_token="" _ex_yandex_device_id="" _ex_yandex_platform=""
+_ex_yandex_token="" _ex_yandex_device_id="" _ex_yandex_platform="" _ex_yandex_device_ip=""
 _ex_email_host="" _ex_email_port="" _ex_email_user=""
 _ex_email_pass="" _ex_email_from="" _ex_email_to=""
 _ex_poll_interval=""
@@ -248,6 +248,7 @@ if [[ -f "$ENV_FILE" ]]; then
     _ex_yandex_token="$(read_env YANDEX_TOKEN)"
     _ex_yandex_device_id="$(read_env YANDEX_DEVICE_ID)"
     _ex_yandex_platform="$(read_env YANDEX_PLATFORM)"
+    _ex_yandex_device_ip="$(read_env YANDEX_DEVICE_IP)"
     _ex_email_host="$(read_env EMAIL_SMTP_HOST)"
     _ex_email_port="$(read_env EMAIL_SMTP_PORT)"
     _ex_email_user="$(read_env EMAIL_USERNAME)"
@@ -740,6 +741,40 @@ fi
 rm -f "$TMPDEV"
 fi  # конец блока авто-определения устройства
 
+# ── IP Станции для локального режима (Raspberry Pi / домашний ПК) ─────────────
+echo
+cat << 'DOC'
+  IP-адрес Станции нужен для работы TTS через локальную сеть (Glagol WebSocket).
+  Это быстрее и надёжнее облачного API — особенно если бот работает на
+  Raspberry Pi в той же домашней сети, что и Яндекс Станция.
+
+  Как узнать IP: откройте веб-интерфейс роутера → список подключённых устройств,
+  найдите устройство с именем «Яндекс» или MAC-адресом, начинающимся на 00:25:9C.
+
+  Рекомендуется зарезервировать IP за MAC-адресом Станции в настройках роутера
+  (DHCP Reservation), чтобы адрес не менялся при перезагрузке.
+
+  Если бот работает на удалённом VPS — пропустите этот шаг.
+DOC
+echo
+
+yandex_device_ip=""
+if [[ -n "$_ex_yandex_device_ip" ]]; then
+    ok "IP Станции уже настроен: $_ex_yandex_device_ip"
+    if confirm "Оставить текущий IP?"; then
+        yandex_device_ip="$_ex_yandex_device_ip"
+    fi
+fi
+
+if [[ -z "$yandex_device_ip" ]]; then
+    if confirm "Указать IP Станции для локального режима?" n; then
+        ask_required "IP-адрес Яндекс Станции (напр. 192.168.1.50)" yandex_device_ip
+        ok "IP Станции: $yandex_device_ip"
+    else
+        info "Локальный режим пропущен — будет использоваться облачный API"
+    fi
+fi
+
 
 # ═════════════════════════════════════════════════════════════════════════════
 h1 "EMAIL — резервный канал для ошибок"
@@ -850,6 +885,7 @@ $(write_env_var TELEGRAM_PROXY_SECRET "$proxy_secret")
 $(write_env_var YANDEX_TOKEN     "$yandex_token")
 $(write_env_var YANDEX_DEVICE_ID "$yandex_device_id")
 $(write_env_var YANDEX_PLATFORM  "$yandex_platform")
+$(write_env_var YANDEX_DEVICE_IP "$yandex_device_ip")
 
 # Email (резервный канал — оставьте пустым чтобы отключить)
 $(write_env_var EMAIL_SMTP_HOST "$email_smtp_host")
@@ -976,6 +1012,46 @@ else
     info "Установка сервиса позже:"
     hint "sudo cp $SERVICE_SRC $SERVICE_DST"
     hint "sudo systemctl enable --now twitch-alice-bot"
+fi
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ШАГ 7: Tailscale — удалённый доступ (опционально)
+# ─────────────────────────────────────────────────────────────────────────────
+step_hdr 7 "Удалённый доступ через Tailscale (опционально)"
+
+cat << 'DOC'
+  Tailscale позволяет подключаться к этому устройству по SSH из любой точки мира
+  без проброса портов на роутере. Бесплатно для личного использования.
+
+  Если установить на Raspberry Pi + на свой телефон/ноутбук — получишь
+  постоянный доступ к боту через: ssh pi@<имя-устройства>
+DOC
+echo
+
+if confirm "Установить Tailscale?" n; then
+    if command -v tailscale &>/dev/null; then
+        ok "Tailscale уже установлен"
+    else
+        info "Устанавливаю Tailscale..."
+        curl -fsSL https://tailscale.com/install.sh | sh
+        ok "Tailscale установлен"
+    fi
+    echo
+    info "Подключаю к сети Tailscale..."
+    hint "Откроется ссылка — войди в браузере под своим аккаунтом Tailscale (или создай на tailscale.com)"
+    echo
+    sudo tailscale up
+    echo
+    TAILSCALE_IP=$(tailscale ip -4 2>/dev/null || echo "")
+    if [[ -n "$TAILSCALE_IP" ]]; then
+        ok "Tailscale IP: $TAILSCALE_IP"
+        hint "SSH из любой точки: ssh ${CURRENT_USER}@${TAILSCALE_IP}"
+    else
+        warn "Tailscale настроен, но IP ещё не назначен — проверь статус: tailscale status"
+    fi
+else
+    info "Пропущено"
 fi
 
 

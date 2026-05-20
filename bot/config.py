@@ -46,6 +46,7 @@ class Config:
     yandex_token: str
     yandex_device_id: str
     yandex_platform: str
+    yandex_device_ip: str  # IP Станции в локальной сети (для Glagol WebSocket)
     # Общие
     db_path: str
     poll_interval: int
@@ -100,6 +101,7 @@ def load_config() -> Config:
         yandex_token=os.environ["YANDEX_TOKEN"],
         yandex_device_id=os.environ["YANDEX_DEVICE_ID"],
         yandex_platform=os.getenv("YANDEX_PLATFORM", "yandexstation_2"),
+        yandex_device_ip=os.getenv("YANDEX_DEVICE_IP", ""),
         db_path=db_path,
         poll_interval=max(30, int(os.getenv("POLL_INTERVAL", "60"))),
         email=EmailConfig(

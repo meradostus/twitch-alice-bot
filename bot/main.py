@@ -43,7 +43,7 @@ async def main():
     db = Database(cfg.db_path)
     await db.connect()
 
-    alice = AliceClient(cfg.yandex_token, cfg.yandex_device_id, cfg.yandex_platform)
+    alice = AliceClient(cfg.yandex_token, cfg.yandex_device_id, cfg.yandex_platform, cfg.yandex_device_ip)
     await alice.start()
 
     bot = Bot(token=cfg.telegram_bot_token)
