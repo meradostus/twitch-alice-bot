@@ -20,6 +20,13 @@ class EmailConfig:
 
 
 @dataclass(frozen=True)
+class MtProtoProxy:
+    server: str
+    port: int
+    secret: str
+
+
+@dataclass(frozen=True)
 class Config:
     monitor_mode: str  # "twitch" | "telegram"
     # Twitch API (только для режима twitch)
@@ -33,6 +40,8 @@ class Config:
     telegram_api_hash: str
     telegram_phone: str
     telegram_session_path: str
+    # MTProto-прокси для Telethon (опционально)
+    telegram_proxy: MtProtoProxy | None
     # Яндекс Алиса
     yandex_token: str
     yandex_device_id: str
@@ -68,6 +77,15 @@ def load_config() -> Config:
 
     db_path = os.getenv("DB_PATH", "data/bot.db")
 
+    proxy_server = os.getenv("TELEGRAM_PROXY_SERVER", "")
+    proxy: MtProtoProxy | None = None
+    if proxy_server:
+        proxy = MtProtoProxy(
+            server=proxy_server,
+            port=int(os.getenv("TELEGRAM_PROXY_PORT", "443")),
+            secret=os.getenv("TELEGRAM_PROXY_SECRET", ""),
+        )
+
     return Config(
         monitor_mode=mode,
         twitch_client_id=os.getenv("TWITCH_CLIENT_ID", ""),
@@ -78,6 +96,7 @@ def load_config() -> Config:
         telegram_api_hash=os.getenv("TELEGRAM_API_HASH", ""),
         telegram_phone=os.getenv("TELEGRAM_PHONE", ""),
         telegram_session_path=os.path.join(os.path.dirname(db_path), "telegram_user"),
+        telegram_proxy=proxy,
         yandex_token=os.environ["YANDEX_TOKEN"],
         yandex_device_id=os.environ["YANDEX_DEVICE_ID"],
         yandex_platform=os.getenv("YANDEX_PLATFORM", "yandexstation_2"),

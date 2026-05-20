@@ -24,11 +24,15 @@ class TelegramMonitor:
         self._client: TelegramClient | None = None
 
     async def run(self):
+        proxy = self._cfg.telegram_proxy
         self._client = TelegramClient(
             self._cfg.telegram_session_path,
             self._cfg.telegram_api_id,
             self._cfg.telegram_api_hash,
+            proxy=("mtproto", proxy.server, proxy.port, proxy.secret) if proxy else None,
         )
+        if proxy:
+            logger.info("Telegram-монитор: MTProto прокси %s:%d", proxy.server, proxy.port)
         await self._client.start(phone=self._cfg.telegram_phone)
         logger.info("Telegram-монитор запущен, слежу за @%s", _TWIMON)
 
