@@ -85,8 +85,7 @@ class TelegramMonitor:
 
         alice_error = await self._alice.speak(tts)
         if alice_error is not None:
-            logger.warning("Алиса недоступна, отправляем в Telegram")
-            await self._notifier.error(f"Алиса недоступна: {alice_error}")
+            logger.warning("Алиса недоступна (%s), уведомление в Telegram", alice_error)
             fallback = f"{display} начал стрим"
             if category:
                 fallback += f"\n🎮 {category}"
