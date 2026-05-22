@@ -50,8 +50,8 @@ async def main():
             print(f"  capabilities={caps or '[]'}")
             print()
 
-        # 3. Тест TTS если нашли IoT id
-        print("=== Тест TTS (phrase_speak_it) ===")
+        # 3. Тест TTS через IoT API (devices/actions)
+        print("=== Тест TTS #1 — IoT devices/actions ===")
         iot_device_id = None
         for d in data.get("devices", []):
             if device_id and d.get("external_id", "").startswith(device_id):
@@ -59,19 +59,39 @@ async def main():
                 break
 
         if not iot_device_id:
-            print("  Устройство не найдено в IoT API")
-            print(f"  YANDEX_DEVICE_ID = {device_id!r}")
-            print("  → TTS через облако недоступен, нужен Glagol (локальный IP)")
+            print("  Устройство не найдено в IoT API (capabilities пусты или устройство не зарегистрировано)")
         else:
-            print(f"  Найден IoT id: {iot_device_id}")
+            print(f"  Найден IoT id: {iot_device_id}, capabilities=[]")
             payload = {"devices": [{"id": iot_device_id, "actions": [{"type": "devices.capabilities.quasar.server_action", "state": {"instance": "phrase_speak_it", "value": "тест"}}]}]}
             async with s.post("https://api.iot.yandex.net/v1.0/devices/actions", json=payload) as r:
                 body = await r.text()
                 if r.status == 200:
                     print(f"  ✓ TTS OK (HTTP 200)")
                 else:
-                    print(f"  ✗ TTS failed: HTTP {r.status}")
-                    print(f"  body: {body}")
+                    print(f"  ✗ HTTP {r.status}: {body}")
+
+        # 4. Тест TTS через Quasar API (альтернативный путь)
+        print()
+        print("=== Тест TTS #2 — iot.quasar.yandex.ru/commands ===")
+        url = f"https://iot.quasar.yandex.ru/m/user/devices/{device_id}/commands"
+        payload = {"payload": {"command": "phrase_speak_it", "text": "тест"}}
+        async with s.post(url, json=payload) as r:
+            body = await r.text()
+            if r.status == 200:
+                print(f"  ✓ TTS OK (HTTP 200) — используй этот endpoint!")
+            else:
+                print(f"  ✗ HTTP {r.status}: {body}")
+
+        print()
+        print("=== Тест TTS #3 — iot.quasar.yandex.ru/quasar/command ===")
+        url2 = f"https://iot.quasar.yandex.ru/m/user/devices/{device_id}/quasar/command"
+        payload2 = {"text": "тест"}
+        async with s.post(url2, json=payload2) as r:
+            body = await r.text()
+            if r.status == 200:
+                print(f"  ✓ TTS OK (HTTP 200) — используй этот endpoint!")
+            else:
+                print(f"  ✗ HTTP {r.status}: {body}")
 
 asyncio.run(main())
 PYEOF
