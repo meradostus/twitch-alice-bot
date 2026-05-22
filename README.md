@@ -76,6 +76,20 @@ bash install.sh
 
 При повторном запуске скрипт предложит сохранить уже введённые данные.
 
+## Отдельная настройка сервисов
+
+Каждый сервис можно настроить и проверить независимо, не перезапуская полный установщик:
+
+| Скрипт | Что настраивает | Проверка |
+|---|---|---|
+| `bash setup/twitch.sh` | Twitch Client ID и Secret | Тест Twitch API |
+| `bash setup/telegram_bot.sh` | Токен бота и Chat ID | Отправка тестового сообщения |
+| `bash setup/telegram_user.sh` | User-аккаунт + MTProto прокси | Авторизация Telethon |
+| `bash setup/yandex.sh` | OAuth токен, устройство, IP Станции | Тест Яндекс API |
+| `bash setup/email.sh` | SMTP настройки | Тест подключения + тестовое письмо |
+
+Скрипты читают текущие значения из `.env` и предлагают их как значения по умолчанию — можно менять только то, что нужно.
+
 ## Удаление бота
 
 ```bash
@@ -164,11 +178,19 @@ twitch-alice-bot/
 │   ├── telegram_monitor.py   # Мониторинг через @twiMonBot
 │   ├── notifier.py           # Цепочка уведомлений: Telegram → Email
 │   └── twitch.py             # Twitch Helix API клиент
+├── setup/
+│   ├── common.sh             # Общие хелперы для setup-скриптов
+│   ├── twitch.sh             # Настройка и проверка Twitch API
+│   ├── telegram_bot.sh       # Настройка и проверка Telegram-бота
+│   ├── telegram_user.sh      # Настройка user-аккаунта и MTProto прокси
+│   ├── yandex.sh             # Настройка и проверка Яндекс Алисы
+│   └── email.sh              # Настройка и проверка Email
 ├── data/                     # SQLite база и сессии (не коммитить)
 ├── logs/                     # Лог-файлы (ротация по дням, хранится 7 дней)
 ├── .env                      # Конфигурация (не коммитить!)
 ├── .env.example              # Шаблон конфигурации
 ├── install.sh                # Установщик
+├── uninstall.sh              # Удаление бота
 ├── update.sh                 # Обновление бота
 ├── switch_mode.sh            # Смена режима мониторинга
 ├── requirements.txt
