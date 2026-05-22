@@ -8,10 +8,10 @@ VENV="$PROJECT_DIR/.venv"
 
 cd "$PROJECT_DIR"
 
-"$VENV/bin/python3" - << 'PYEOF'
+ENV_FILE="$PROJECT_DIR/.env" "$VENV/bin/python3" - << 'PYEOF'
 import asyncio, aiohttp, os, sys, json
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(os.environ["ENV_FILE"])
 
 async def main():
     token     = os.getenv("YANDEX_TOKEN", "")
