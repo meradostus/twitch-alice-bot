@@ -7,6 +7,10 @@ set -euo pipefail
 # При bash <(curl ...) BASH_SOURCE[0] указывает на пайп (/dev/fd/NN),
 # а не на обычный файл — это надёжный признак запуска через pipe.
 if [[ ! -f "${BASH_SOURCE[0]:-}" ]]; then
+    if ! command -v git &>/dev/null; then
+        echo "git не найден — устанавливаю..."
+        sudo apt-get update -qq && sudo apt-get install -y git
+    fi
     _dest="${TWITCH_BOT_DIR:-$HOME/twitch-alice-bot}"
     echo "Клонирование репозитория в $_dest ..."
     if [[ -d "$_dest/.git" ]]; then
