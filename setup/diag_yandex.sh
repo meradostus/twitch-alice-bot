@@ -93,5 +93,46 @@ async def main():
             else:
                 print(f"  ✗ HTTP {r.status}: {body}")
 
+        # Получаем Glagol JWT для следующих тестов
+        platform = os.getenv("YANDEX_PLATFORM", "yandexmini_2")
+        glagol_token = None
+        async with s.get(
+            "https://quasar.yandex.net/glagol/token",
+            params={"device_id": device_id, "platform": platform},
+        ) as r:
+            if r.status == 200:
+                glagol_token = (await r.json()).get("token")
+
+        print()
+        print("=== Тест TTS #4 — quasar.yandex.net с Bearer token ===")
+        async with aiohttp.ClientSession(
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=aiohttp.ClientTimeout(total=10)
+        ) as s2:
+            url3 = f"https://iot.quasar.yandex.ru/m/user/devices/{device_id}/commands"
+            async with s2.post(url3, json={"payload": {"command": "phrase_speak_it", "text": "тест"}}) as r:
+                body = await r.text()
+                if r.status == 200:
+                    print(f"  ✓ TTS OK с Bearer! Endpoint: {url3}")
+                else:
+                    print(f"  ✗ HTTP {r.status}: {body}")
+
+        print()
+        print("=== Тест TTS #5 — с Glagol JWT token ===")
+        if glagol_token:
+            async with aiohttp.ClientSession(
+                headers={"Authorization": f"OAuth {glagol_token}"},
+                timeout=aiohttp.ClientTimeout(total=10)
+            ) as s3:
+                url4 = f"https://iot.quasar.yandex.ru/m/user/devices/{device_id}/commands"
+                async with s3.post(url4, json={"payload": {"command": "phrase_speak_it", "text": "тест"}}) as r:
+                    body = await r.text()
+                    if r.status == 200:
+                        print(f"  ✓ TTS OK с Glagol JWT! Endpoint: {url4}")
+                    else:
+                        print(f"  ✗ HTTP {r.status}: {body}")
+        else:
+            print("  Glagol token не получен — пропускаю")
+
 asyncio.run(main())
 PYEOF
