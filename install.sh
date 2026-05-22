@@ -231,6 +231,7 @@ _ex_monitor_mode=""
 _ex_twitch_id="" _ex_twitch_secret=""
 _ex_tg_api_id="" _ex_tg_api_hash="" _ex_tg_phone=""
 _ex_tg_token="" _ex_tg_chat_id=""
+_ex_aiogram_proxy_url=""
 _ex_proxy_server="" _ex_proxy_port="" _ex_proxy_secret=""
 _ex_yandex_token="" _ex_yandex_device_id="" _ex_yandex_platform="" _ex_yandex_device_ip=""
 _ex_email_host="" _ex_email_port="" _ex_email_user=""
@@ -247,6 +248,7 @@ if [[ -f "$ENV_FILE" ]]; then
     _ex_tg_phone="$(read_env TELEGRAM_PHONE)"
     _ex_tg_token="$(read_env TELEGRAM_BOT_TOKEN)"
     _ex_tg_chat_id="$(read_env TELEGRAM_CHAT_ID)"
+    _ex_aiogram_proxy_url="$(read_env AIOGRAM_PROXY_URL)"
     _ex_proxy_server="$(read_env TELEGRAM_PROXY_SERVER)"
     _ex_proxy_port="$(read_env TELEGRAM_PROXY_PORT)"
     _ex_proxy_secret="$(read_env TELEGRAM_PROXY_SECRET)"
@@ -482,6 +484,38 @@ DOC
     ask_required "Chat ID (число, для группы — отрицательное)" tg_chat_id
 fi
 fi  # конец блока chat_id
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+h1 "HTTP ПРОКСИ ДЛЯ TELEGRAM BOT API (опционально)"
+cat << 'DOC'
+  Если с этого сервера не открывается api.telegram.org — укажи HTTP или SOCKS5 прокси.
+  Проверить: curl --max-time 5 https://api.telegram.org
+
+  Формат:
+    http://логин:пароль@хост:порт
+    socks5://логин:пароль@хост:порт
+
+  Если Telegram доступен напрямую — пропусти этот шаг.
+DOC
+echo
+
+aiogram_proxy_url=""
+if [[ -n "$_ex_aiogram_proxy_url" ]]; then
+    ok "Прокси уже настроен: $_ex_aiogram_proxy_url"
+    if confirm "Оставить текущий HTTP прокси?"; then
+        aiogram_proxy_url="$_ex_aiogram_proxy_url"
+    fi
+fi
+
+if [[ -z "$aiogram_proxy_url" ]]; then
+    if confirm "Настроить HTTP прокси для Bot API?" n; then
+        ask_required "URL прокси (http://... или socks5://...)" aiogram_proxy_url
+        ok "Прокси: $aiogram_proxy_url"
+    else
+        info "HTTP прокси пропущен"
+    fi
+fi
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -891,6 +925,9 @@ $(write_env_var TELEGRAM_CHAT_ID   "$tg_chat_id")
 $(write_env_var TELEGRAM_API_ID   "$tg_api_id")
 $(write_env_var TELEGRAM_API_HASH "$tg_api_hash")
 $(write_env_var TELEGRAM_PHONE    "$tg_phone")
+
+# HTTP прокси для Telegram Bot API (опционально)
+$(write_env_var AIOGRAM_PROXY_URL "$aiogram_proxy_url")
 
 # Telegram MTProto прокси (опционально — для работы из России)
 $(write_env_var TELEGRAM_PROXY_SERVER "$proxy_server")

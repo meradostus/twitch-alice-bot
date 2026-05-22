@@ -21,6 +21,7 @@ echo
 
 cur_token="$(read_env TELEGRAM_BOT_TOKEN)"
 cur_chat_id="$(read_env TELEGRAM_CHAT_ID)"
+cur_aiogram_proxy="$(read_env AIOGRAM_PROXY_URL)"
 
 [[ -n "$cur_token" ]]   && info "Текущий токен:   сохранён"
 [[ -n "$cur_chat_id" ]] && info "Текущий Chat ID: $cur_chat_id"
@@ -74,8 +75,31 @@ PYEOF
     fi
 fi
 
+# ── HTTP прокси для Bot API ───────────────────────────────────────────────────
+echo
+aiogram_proxy_url=""
+if [[ -n "$cur_aiogram_proxy" ]]; then
+    ok "HTTP прокси: $cur_aiogram_proxy"
+    if confirm "Оставить текущий прокси?"; then
+        aiogram_proxy_url="$cur_aiogram_proxy"
+    fi
+fi
+
+if [[ -z "$aiogram_proxy_url" ]]; then
+    info "Если api.telegram.org недоступен напрямую — укажи прокси."
+    info "Формат: http://user:pass@host:port  или  socks5://user:pass@host:port"
+    echo
+    if confirm "Настроить HTTP прокси для Bot API?" n; then
+        ask_required "URL прокси" aiogram_proxy_url
+        ok "Прокси: $aiogram_proxy_url"
+    else
+        info "Прокси пропущен"
+    fi
+fi
+
 set_env_var TELEGRAM_BOT_TOKEN "$bot_token"
 set_env_var TELEGRAM_CHAT_ID   "$chat_id"
+set_env_var AIOGRAM_PROXY_URL  "$aiogram_proxy_url"
 ok ".env обновлён"
 
 # ── Проверка ──────────────────────────────────────────────────────────────────
