@@ -5,6 +5,7 @@ import signal
 from logging.handlers import TimedRotatingFileHandler
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.types import BotCommand
 
 from .alice import AliceClient
@@ -46,7 +47,8 @@ async def main():
     alice = AliceClient(cfg.yandex_token, cfg.yandex_device_id, cfg.yandex_platform, cfg.yandex_device_ip)
     await alice.start()
 
-    bot = Bot(token=cfg.telegram_bot_token)
+    session = AiohttpSession(proxy=cfg.aiogram_proxy_url) if cfg.aiogram_proxy_url else None
+    bot = Bot(token=cfg.telegram_bot_token, session=session) if session else Bot(token=cfg.telegram_bot_token)
     await bot.set_my_commands([
         BotCommand(command="subscribe",   description="Подписаться на канал"),
         BotCommand(command="unsubscribe", description="Отписаться от канала"),

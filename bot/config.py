@@ -42,6 +42,8 @@ class Config:
     telegram_session_path: str
     # MTProto-прокси для Telethon (опционально)
     telegram_proxy: MtProtoProxy | None
+    # HTTP-прокси для aiogram Bot API (опционально — для работы из России)
+    aiogram_proxy_url: str
     # Яндекс Алиса
     yandex_token: str
     yandex_device_id: str
@@ -98,6 +100,7 @@ def load_config() -> Config:
         telegram_phone=os.getenv("TELEGRAM_PHONE", ""),
         telegram_session_path=os.path.join(os.path.dirname(db_path), "telegram_user"),
         telegram_proxy=proxy,
+        aiogram_proxy_url=os.getenv("AIOGRAM_PROXY_URL", ""),
         yandex_token=os.environ["YANDEX_TOKEN"],
         yandex_device_id=os.environ["YANDEX_DEVICE_ID"],
         yandex_platform=os.getenv("YANDEX_PLATFORM", "yandexstation_2"),
