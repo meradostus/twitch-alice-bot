@@ -387,55 +387,6 @@ echo
 
 ask_or_keep "Номер телефона" tg_phone "$_ex_tg_phone"
 
-echo
-mkdir -p "$PROJECT_DIR/data"
-
-# Пропускаем авторизацию если сессия уже существует
-if [[ -f "$PROJECT_DIR/data/telegram_user.session" ]]; then
-    ok "Telegram-сессия уже существует — авторизация не нужна"
-else
-info "Авторизуюсь в Telegram. На твой телефон придёт код подтверждения..."
-echo
-
-TMPAUTH=$(mktemp /tmp/tg_auth_XXXXXX.py)
-cat > "$TMPAUTH" << 'PYEOF'
-import sys, re, asyncio
-from telethon import TelegramClient
-
-def normalize_phone(p):
-    p = re.sub(r'[\s\-\(\)]+', '', p)
-    if not p.startswith('+'):
-        p = '+' + p
-    return p
-
-async def main():
-    api_id   = int(sys.argv[1])
-    api_hash = sys.argv[2]
-    phone    = normalize_phone(sys.argv[3])
-    session  = sys.argv[4]
-    print(f"  Номер: {phone}")
-    client = TelegramClient(session, api_id, api_hash)
-    await client.start(phone=phone)
-    me = await client.get_me()
-    name = me.first_name or ""
-    if me.last_name:
-        name += f" {me.last_name}"
-    print(f"  Авторизован как: {name} (@{me.username or me.phone})")
-    await client.disconnect()
-
-asyncio.run(main())
-PYEOF
-
-if "$VENV/bin/python3" "$TMPAUTH" \
-        "$tg_api_id" "$tg_api_hash" "$tg_phone" \
-        "$PROJECT_DIR/data/telegram_user"; then
-    ok "Telegram-сессия сохранена"
-else
-    die "Авторизация Telegram не удалась — проверь API_ID, API_HASH и номер телефона"
-fi
-rm -f "$TMPAUTH"
-
-fi  # конец блока else (авторизация)
 fi  # конец блока telegram
 
 
@@ -591,6 +542,66 @@ if [[ -z "$_ex_proxy_server" ]]; then
         done
     else
         info "Прокси пропущен"
+    fi
+fi
+
+# ── Авторизация Telegram user-аккаунта (после прокси, чтобы работало из России) ─
+if [[ "$monitor_mode_value" == "telegram" ]]; then
+    mkdir -p "$PROJECT_DIR/data"
+    if [[ -f "$PROJECT_DIR/data/telegram_user.session" ]]; then
+        ok "Telegram-сессия уже существует — авторизация не нужна"
+    else
+        if [[ -n "$proxy_server" ]]; then
+            info "Авторизуюсь в Telegram через MTProto прокси ($proxy_server:$proxy_port)..."
+        else
+            info "Авторизуюсь в Telegram. На твой телефон придёт код подтверждения..."
+        fi
+        echo
+
+        TMPAUTH=$(mktemp /tmp/tg_auth_XXXXXX.py)
+        cat > "$TMPAUTH" << 'PYEOF'
+import sys, re, asyncio
+from telethon import TelegramClient
+
+def normalize_phone(p):
+    p = re.sub(r'[\s\-\(\)]+', '', p)
+    if not p.startswith('+'):
+        p = '+' + p
+    return p
+
+async def main():
+    api_id      = int(sys.argv[1])
+    api_hash    = sys.argv[2]
+    phone       = normalize_phone(sys.argv[3])
+    session     = sys.argv[4]
+    proxy_server = sys.argv[5] if len(sys.argv) > 5 else ""
+    proxy_port   = int(sys.argv[6]) if len(sys.argv) > 6 and sys.argv[6] else 443
+    proxy_secret = sys.argv[7] if len(sys.argv) > 7 else ""
+
+    proxy = ("mtproto", proxy_server, proxy_port, proxy_secret) if proxy_server else None
+
+    print(f"  Номер: {phone}")
+    client = TelegramClient(session, api_id, api_hash, proxy=proxy)
+    await client.start(phone=phone)
+    me = await client.get_me()
+    name = me.first_name or ""
+    if me.last_name:
+        name += f" {me.last_name}"
+    print(f"  Авторизован как: {name} (@{me.username or me.phone})")
+    await client.disconnect()
+
+asyncio.run(main())
+PYEOF
+
+        if "$VENV/bin/python3" "$TMPAUTH" \
+                "$tg_api_id" "$tg_api_hash" "$tg_phone" \
+                "$PROJECT_DIR/data/telegram_user" \
+                "$proxy_server" "$proxy_port" "$proxy_secret"; then
+            ok "Telegram-сессия сохранена"
+        else
+            die "Авторизация Telegram не удалась — проверь API_ID, API_HASH и номер телефона"
+        fi
+        rm -f "$TMPAUTH"
     fi
 fi
 
