@@ -106,8 +106,9 @@ confirm() {
     else
         printf "${BOLD}  %s${RESET} [y/N]: " "$msg"
     fi
-    read -r ans
-    ans="$(trim "$ans")"
+    read -r ans || true
+    ans="${ans%$'\r'}"   # снять CR (\r\n от Windows/SSH-клиентов)
+    ans="${ans:0:1}"     # брать только первый символ
     [[ "${ans:-$default}" =~ ^[Yy]$ ]]
 }
 
